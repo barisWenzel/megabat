@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Megabat</AssemblyName>
+    <RootNamespace>Megabat</RootNamespace>
+    <TargetExt>.gha</TargetExt>
+    <Version>0.1.0</Version>
+    <Authors>Baris Wenzel</Authors>
+    <Description>Punktwolken-Werkzeuge für Scan-to-BIM in Grasshopper</Description>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoWarn>$(NoWarn);CS0168;CS0219;CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Grasshopper" Version="8.*" ExcludeAssets="runtime" />
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Megabat.Core\Megabat.Core.csproj" />
+  </ItemGroup>
+</Project>

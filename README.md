@@ -1,1 +1,92 @@
-# megabat
+# Megabat
+
+Point cloud tools for scan-to-BIM in Grasshopper (Rhino 8).
+
+Megabat makes large point clouds workable in Grasshopper and leads from the raw scan to building elements: thin, crop, detect planes, snap rooms, walls and openings from rough sketches, and cut architectural sections.
+
+Developed at the Institute of Architectural History (IfAG), University of Stuttgart, for teaching and research on digital reconstruction.
+
+## Installation
+
+1. Download the ZIP from [Releases](https://github.com/barisWenzel/megabat/releases).
+2. Copy its content (`Megabat.gha`, `Megabat.Core.dll`, `0Harmony.dll`) into a folder `%AppData%\Grasshopper\Libraries\Megabat`.
+3. On Windows, right click the files › Properties › tick *Unblock* if shown.
+4. Restart Rhino. The **Megabat** tab appears in Grasshopper.
+
+## Workflow
+
+```
+Scan (registered)
+  └─ Cloud ─ Downsample ─ CropBrep / SplitSlices
+                             └─ Segmentize ─ Classify
+                                               ├─ SnapPolygon   rooms and wall runs
+                                               ├─ SnapOpening   windows and doors
+                                               └─ Section       plans and sections
+     FitColumn for round columns, Show for display
+```
+
+The geometric elements are semi-automatic on purpose: you sketch roughly, Megabat snaps to the points, and every result reports its deviations in `Info`. Where there are no points (occlusion), the sketch stays as drawn.
+
+## Components
+
+| Group | Component | Purpose |
+|---|---|---|
+| 1 Cloud | [Cloud](docs/components/Cloud.md) (parameter) | Reference a point cloud from Rhino, no copy, thinned preview |
+| | [Downsample](docs/components/Downsample.md) | Thin to a target count (every k-th point or voxel grid) |
+| | [CropBrep](docs/components/CropBrep.md) | Points inside closed Breps, one cloud per Brep |
+| | [SplitSlices](docs/components/SplitSlices.md) | Split at parallel planes (e.g. storeys) |
+| 2 Segments | [Segmentize](docs/components/Segmentize.md) | Find planes (RANSAC), output as segments |
+| | [Classify](docs/components/Classify.md) | Horizontal / vertical / inclined, snap to Z and main direction |
+| | [Deconstruct Segment](docs/components/DeconstructSegment.md) | Plane, points, type of a segment |
+| 3 Elements | [SnapPolygon](docs/components/SnapPolygon.md) | Snap a sketched room or wall run to the walls |
+| | [SnapOpening](docs/components/SnapOpening.md) | Snap a sketched window or door to the opening, reveal depth |
+| | [FitColumn](docs/components/FitColumn.md) | Round column by circle fit |
+| 4 Section | [Section](docs/components/Section.md) | Architectural section with view beyond |
+| 5 Display | [Show](docs/components/Show.md) | Preview with line weight, point size and colour |
+
+Every component shows its name below the icon, describes all inputs and outputs in the tooltip and reports counts, deviations and run time in `Info`.
+
+## Why Megabat: the preview bottleneck
+
+With a scan of several million points, plain Grasshopper quickly becomes unusable: the canvas freezes and the viewport stutters. There are two reasons.
+
+1. **Copying.** The Grasshopper Point Cloud parameter copies the whole cloud when it references it from Rhino and again whenever the data is passed to the next parameter. Every copy costs time and memory.
+2. **Drawing.** Every parameter and component that holds a cloud draws all of its points in the preview, on every redraw. Three parameters in a row with 10 million points each means 30 million points per frame.
+
+Megabat solves both:
+
+1. **No copies.** The Megabat `Cloud` type is passed on by reference. Megabat components never modify their input, they always create new clouds for their outputs, so sharing is safe.
+2. **Thinned preview.** Clouds are drawn from a cached, thinned copy (every k-th point, colours kept). Computation always uses all points.
+3. **PreviewGuard.** The same thinning is applied to normal Grasshopper point clouds (via a Harmony patch on `GH_PointCloud`), so clouds from other plugins are covered too.
+
+Measured in Rhino 8 (random cloud with colours, chain of three parameters, time to solve):
+
+| Points | Grasshopper Point Cloud | Megabat Cloud |
+|---:|---:|---:|
+| 1 000 000 | 26 ms | 7 ms |
+| 5 000 000 | 61 ms | 6 ms |
+| 10 000 000 | 118 ms | 9 ms |
+
+Referencing a 10 million point cloud from Rhino: 93 ms with the Grasshopper parameter (copy), below 1 ms with Megabat. The copying cost grows with every parameter in the chain, while Megabat stays constant.
+
+### PreviewGuard
+
+A button in the Grasshopper canvas toolbar, next to the preview modes.
+
+1. **Click:** switch on or off. It is on at every start of Rhino; switching off only lasts for the current session.
+2. **Arrow:** choose the maximum number of points per cloud (250 k, 500 k, 1 M, 2 M) or type your own value. The default is 1 000 000. The chosen value is remembered.
+3. The first time a cloud is thinned in a session, a short message explains what happens.
+
+## Building
+
+Requires the .NET SDK 8 or newer (Windows).
+
+```
+dotnet build Megabat.sln -c Release
+```
+
+The output is in `src/Megabat/bin/Release/net8.0-windows/`. `Megabat.Core` contains all algorithms without any Grasshopper dependency; `Megabat` contains the Grasshopper components, types and the PreviewGuard.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Megabat.Core</RootNamespace>
+    <Version>0.1.0</Version>
+    <Authors>Baris Wenzel</Authors>
+    <NoWarn>$(NoWarn);CS0168;CS0219</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RhinoCommon" Version="8.*" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>
