@@ -67,7 +67,7 @@ namespace Megabat.RhinoPlugin
       var fd = new Rhino.UI.OpenFileDialog
       {
         Title = "Megabat: import point cloud as proxy",
-        Filter = "Point clouds (*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv)|*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv",
+        Filter = "Point clouds (*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv)|*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv",
         MultiSelect = true
       };
       if (!fd.ShowOpenDialog()) return Result.Cancel;
@@ -82,7 +82,7 @@ namespace Megabat.RhinoPlugin
         {
           RhinoApp.SetCommandPrompt("Reading " + Path.GetFileName(file) + " ...");
           var sw = System.Diagnostics.Stopwatch.StartNew();
-          var full = CloudFile.Load(file);
+          var full = CloudFile.Load(file, doc.ModelUnitSystem);
           MegabatRhino.AddProxy(doc, full, file, Path.GetFileNameWithoutExtension(file), count);
           RhinoApp.WriteLine(string.Format("Megabat: {0} with {1:N0} points, {2:N0} shown ({3:0.0} s)",
             Path.GetFileName(file), full.Count, Math.Min(count, full.Count), sw.Elapsed.TotalSeconds));
@@ -174,7 +174,7 @@ namespace Megabat.RhinoPlugin
         if (file == null) { RhinoApp.WriteLine("Megabat: file of {0} not found ({1})", obj.Attributes.Name, obj.Attributes.GetUserString(CloudFile.KeySource)); continue; }
         try
         {
-          var full = CloudFile.Load(file);
+          var full = CloudFile.Load(file, doc.ModelUnitSystem);
           var att = obj.Attributes.Duplicate();
           CloudFile.Unmark(att);
           doc.Objects.Replace(obj.Id, full);

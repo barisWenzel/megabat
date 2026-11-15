@@ -21,7 +21,7 @@ namespace Megabat.Core
     public const string KeySourceRel = "Megabat.SourceRel"; // path relative to the .3dm, if possible
     public const string KeyCount = "Megabat.FullCount";     // point count of the full cloud
 
-    public static readonly string[] Extensions = { ".ply", ".3dm", ".xyz", ".pts", ".txt", ".csv" };
+    public static readonly string[] Extensions = { ".e57", ".ply", ".3dm", ".xyz", ".pts", ".txt", ".csv" };
 
     // ---- Proxy convention -------------------------------------------------
 
@@ -63,28 +63,30 @@ namespace Megabat.Core
 
     // ---- Cache: a file is read once as long as it does not change ---------
 
-    class Entry { public DateTime Time; public long Size; public PointCloud Cloud; public long Used; }
+    class Entry { public DateTime Time; public long Size; public Rhino.UnitSystem Units; public PointCloud Cloud; public long Used; }
     static readonly Dictionary<string, Entry> cache = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
     static long tick;
     const int CacheSize = 3;
 
-    public static PointCloud Load(string path)
+    // units: unit system of the target document. E57 and 3dm are scaled into it;
+    // PLY and text files carry no units and are taken as they are.
+    public static PointCloud Load(string path, Rhino.UnitSystem units = Rhino.UnitSystem.None)
     {
       path = Path.GetFullPath(path);
       var fi = new FileInfo(path);
       if (!fi.Exists) throw new FileNotFoundException("Point cloud file not found", path);
       lock (cache)
       {
-        if (cache.TryGetValue(path, out var e) && e.Time == fi.LastWriteTimeUtc && e.Size == fi.Length)
+        if (cache.TryGetValue(path, out var e) && e.Time == fi.LastWriteTimeUtc && e.Size == fi.Length && e.Units == units)
         {
           e.Used = ++tick;
           return e.Cloud;
         }
       }
-      var c = Read(path);
+      var c = Read(path, units);
       lock (cache)
       {
-        cache[path] = new Entry { Time = fi.LastWriteTimeUtc, Size = fi.Length, Cloud = c, Used = ++tick };
+        cache[path] = new Entry { Time = fi.LastWriteTimeUtc, Size = fi.Length, Units = units, Cloud = c, Used = ++tick };
         while (cache.Count > CacheSize)
           cache.Remove(cache.OrderBy(kv => kv.Value.Used).First().Key);
       }
@@ -98,19 +100,20 @@ namespace Megabat.Core
 
     // ---- Reading ----------------------------------------------------------
 
-    public static PointCloud Read(string path)
+    public static PointCloud Read(string path, Rhino.UnitSystem units = Rhino.UnitSystem.None)
     {
       switch (Path.GetExtension(path).ToLowerInvariant())
       {
+        case ".e57": return ReadE57(path, units);
         case ".ply": return ReadPly(path);
-        case ".3dm": return Read3dm(path);
+        case ".3dm": return Read3dm(path, units);
         case ".xyz": case ".pts": case ".txt": case ".csv": return ReadText(path);
       }
       throw new NotSupportedException("Unsupported file type: " + Path.GetExtension(path));
     }
 
-    // All point clouds of a .3dm file, merged into one
-    static PointCloud Read3dm(string path)
+    // All point clouds of a .3dm file, merged into one and scaled into the target units
+    static PointCloud Read3dm(string path, Rhino.UnitSystem units)
     {
       using (var f = File3dm.Read(path))
       {
@@ -119,6 +122,31 @@ namespace Megabat.Core
         foreach (var o in f.Objects)
           if (o.Geometry is PointCloud pc) res.Merge(pc);
         if (res.Count == 0) throw new InvalidDataException("No point cloud in " + path);
+        if (units != Rhino.UnitSystem.None && f.Settings.ModelUnitSystem != Rhino.UnitSystem.None)
+        {
+          double s = Rhino.RhinoMath.UnitScale(f.Settings.ModelUnitSystem, units);
+          if (Math.Abs(s - 1) > 1e-12) res.Transform(Transform.Scale(Point3d.Origin, s));
+        }
+        return res;
+      }
+    }
+
+    // E57 through the E57 importer of Rhino, into a headless document (nothing appears in the open file).
+    // All scans are merged; the importer applies the scan poses and scales from metres into the target units.
+    static PointCloud ReadE57(string path, Rhino.UnitSystem units)
+    {
+      using (var hd = Rhino.RhinoDoc.CreateHeadless(null))
+      {
+        hd.ModelUnitSystem = units == Rhino.UnitSystem.None ? Rhino.UnitSystem.Meters : units;
+        if (!hd.Import(path)) throw new InvalidDataException("Rhino could not import " + path);
+        PointCloud res = null;
+        foreach (var o in hd.Objects)
+        {
+          if (!(o.Geometry is PointCloud pc)) continue;
+          if (res == null) res = (PointCloud)pc.Duplicate();
+          else res.Merge(pc);
+        }
+        if (res == null || res.Count == 0) throw new InvalidDataException("No point cloud in " + path);
         return res;
       }
     }

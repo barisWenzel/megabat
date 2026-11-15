@@ -84,9 +84,11 @@ Even with Megabat, a scan with tens of millions of points slows Rhino itself dow
 
 | Command | What it does |
 |---|---|
-| `MegabatImport` | Reads a file (`.ply`, `.3dm`, `.xyz`, `.pts`, `.txt`, `.csv`) and adds a proxy with a chosen number of points (default 500 000). The file stays where it is. |
+| `MegabatImport` | Reads a file (`.e57`, `.ply`, `.3dm`, `.xyz`, `.pts`, `.txt`, `.csv`) and adds a proxy with a chosen number of points (default 500 000). The file stays where it is. |
 | `MegabatProxy` | Turns selected point clouds into proxies. The full cloud is written as binary PLY (double precision) into a folder `<file>_clouds` next to the .3dm. |
 | `MegabatFull` | Brings the full cloud back into the document, e.g. to snap to every point or to export. |
+
+E57 files are read with the E57 importer built into Rhino 8 (all scans merged, scan poses applied, scaled from metres into the document units). PLY and text files carry no units and are taken as they are.
 
 A proxy is a normal point cloud object: select it, move it to a layer, reference it in Grasshopper. When the **Cloud** parameter references a proxy, Megabat computes with the full cloud from the file and shows `full cloud from …` in the tooltip. Files are cached, so they are read only once while they do not change. The path is stored absolute and relative to the .3dm, so a project folder can be moved.
 

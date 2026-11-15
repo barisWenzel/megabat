@@ -79,7 +79,7 @@ namespace Megabat.Types
       var src = CloudFile.SourceOf(obj.Attributes, doc.Path);
       if (src != null)
       {
-        try { m_value = CloudFile.Load(src); _file = src; return true; }
+        try { m_value = CloudFile.Load(src, doc.ModelUnitSystem); _file = src; return true; }
         catch { }
       }
       m_value = pc;
