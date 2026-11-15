@@ -196,4 +196,36 @@ namespace Megabat.Components
       DA.SetDataList(1, info);
     }
   }
+
+  public class MergeCloudsComponent : MegabatComponent
+  {
+    public MergeCloudsComponent() : base("MergeClouds", "Merge",
+      "Merge several clouds into one new cloud, e.g. the parts from CropBrep or SplitSlices.", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000005");
+    public override GH_Exposure Exposure => GH_Exposure.secondary;
+    protected override string IconText => "Mg";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      AddCloud(p, "C", "Clouds to merge", GH_ParamAccess.list);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      AddCloud(p, "Cloud", "Merged cloud; colours are kept if any cloud has them (others grey), normals only if all have them");
+      p.AddTextParameter("Info", "Info", "Number of clouds and points, run time", GH_ParamAccess.item);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var C = new List<CloudGoo>();
+      if (!DA.GetDataList(0, C)) return;
+      var clouds = C.Where(c => c?.Value != null && c.Value.Count > 0).Select(c => c.Value).ToList();
+      if (clouds.Count == 0) return;
+      PointCloud r;
+      try { r = clouds.Count == 1 ? clouds[0] : CloudUtil.Merge(clouds); }
+      catch (Exception e) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.Message); return; }
+      DA.SetData(0, new CloudGoo(r));
+      DA.SetData(1, string.Format("{0} clouds → {1:N0} points, {2}", clouds.Count, r.Count, Ms));
+    }
+  }
 }

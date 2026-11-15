@@ -36,6 +36,7 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | | [Downsample](docs/components/Downsample.md) | Thin to a target count (every k-th point or voxel grid) |
 | | [CropBrep](docs/components/CropBrep.md) | Points inside closed Breps, one cloud per Brep |
 | | [SplitSlices](docs/components/SplitSlices.md) | Split at parallel planes (e.g. storeys) |
+| | [MergeClouds](docs/components/MergeClouds.md) | Merge several clouds into one |
 | | [ExportCloud](docs/components/ExportCloud.md) | Write clouds to PLY or XYZ files instead of baking |
 | 2 Segments | [Segmentize](docs/components/Segmentize.md) | Find planes (RANSAC), output as segments |
 | | [Classify](docs/components/Classify.md) | Horizontal / vertical / inclined, snap to Z and main direction |
