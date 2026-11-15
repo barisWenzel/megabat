@@ -9,9 +9,10 @@ Developed at the Institute of Architectural History (IfAG), University of Stuttg
 ## Installation
 
 1. Download the ZIP from [Releases](https://github.com/barisWenzel/megabat/releases).
-2. Copy its content (`Megabat.gha`, `Megabat.Core.dll`, `0Harmony.dll`) into a folder `%AppData%\Grasshopper\Libraries\Megabat`.
+2. Copy its content (`Megabat.gha`, `Megabat.Core.dll`, `0Harmony.dll`, `Megabat.Rhino.rhp`) into a folder `%AppData%\Grasshopper\Libraries\Megabat`.
 3. On Windows, right click the files › Properties › tick *Unblock* if shown.
 4. Restart Rhino. The **Megabat** tab appears in Grasshopper.
+5. Optional, for the Rhino commands: drag `Megabat.Rhino.rhp` from that folder into the Rhino window once.
 
 ## Workflow
 
@@ -77,6 +78,20 @@ A button in the Grasshopper canvas toolbar, next to the preview modes.
 2. **Arrow:** choose the maximum number of points per cloud (250 k, 500 k, 1 M, 2 M) or type your own value. The default is 1 000 000. The chosen value is remembered.
 3. The first time a cloud is thinned in a session, a short message explains what happens.
 
+## Rhino: large clouds as light proxies
+
+Even with Megabat, a scan with tens of millions of points slows Rhino itself down: the viewport, selection, saving and undo all handle every point. The Rhino commands keep only a thinned **proxy** in the document; the full cloud stays in a file.
+
+| Command | What it does |
+|---|---|
+| `MegabatImport` | Reads a file (`.ply`, `.3dm`, `.xyz`, `.pts`, `.txt`, `.csv`) and adds a proxy with a chosen number of points (default 500 000). The file stays where it is. |
+| `MegabatProxy` | Turns selected point clouds into proxies. The full cloud is written as binary PLY (double precision) into a folder `<file>_clouds` next to the .3dm. |
+| `MegabatFull` | Brings the full cloud back into the document, e.g. to snap to every point or to export. |
+
+A proxy is a normal point cloud object: select it, move it to a layer, reference it in Grasshopper. When the **Cloud** parameter references a proxy, Megabat computes with the full cloud from the file and shows `full cloud from …` in the tooltip. Files are cached, so they are read only once while they do not change. The path is stored absolute and relative to the .3dm, so a project folder can be moved.
+
+Snapping in Rhino only finds the proxy points. Transforming a proxy in Rhino does not transform the file.
+
 ## Building
 
 Requires the .NET SDK 8 or newer (Windows).
@@ -85,7 +100,7 @@ Requires the .NET SDK 8 or newer (Windows).
 dotnet build Megabat.sln -c Release
 ```
 
-The output is in `src/Megabat/bin/Release/net8.0-windows/`. `Megabat.Core` contains all algorithms without any Grasshopper dependency; `Megabat` contains the Grasshopper components, types and the PreviewGuard.
+The output is in `src/Megabat/bin/Release/net8.0-windows/`. `Megabat.Core` contains all algorithms and the file reader without any Grasshopper dependency; `Megabat` contains the Grasshopper components, types and the PreviewGuard; `Megabat.Rhino` contains the Rhino commands (`src/Megabat.Rhino/bin/Release/net8.0-windows/Megabat.Rhino.rhp`).
 
 ## License
 

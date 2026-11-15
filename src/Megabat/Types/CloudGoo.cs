@@ -16,6 +16,7 @@ namespace Megabat.Types
   {
     PointCloud _thin; int _thinMax = -1;
     Guid _ref = Guid.Empty;
+    string _file;   // set when the cloud was loaded from the file of a proxy
     BoundingBox _box = BoundingBox.Unset;
 
     public CloudGoo() { }
@@ -30,10 +31,11 @@ namespace Megabat.Types
     public override string IsValidWhyNot => m_value == null ? "No point cloud" : string.Empty;
     public override string TypeName => "Cloud";
     public override string TypeDescription => "Point cloud (Megabat), passed on without copying";
-    public override string ToString() => m_value == null ? "Empty cloud" : string.Format("Cloud ({0:N0} points)", m_value.Count);
+    public override string ToString() => m_value == null ? "Empty cloud" :
+      string.Format("Cloud ({0:N0} points{1})", m_value.Count, _file != null ? ", full cloud from " + System.IO.Path.GetFileName(_file) : "");
 
     // Shallow copy: same cloud, new wrapper only
-    public override IGH_Goo Duplicate() => new CloudGoo(m_value) { ReferenceID = ReferenceID };
+    public override IGH_Goo Duplicate() => new CloudGoo(m_value) { ReferenceID = ReferenceID, _file = _file };
     public override IGH_GeometricGoo DuplicateGeometry() => new CloudGoo(m_value?.Duplicate() as PointCloud);
 
     public override BoundingBox Boundingbox
@@ -71,8 +73,17 @@ namespace Megabat.Types
     {
       if (doc == null || ReferenceID == Guid.Empty) return false;
       var obj = doc.Objects.FindId(ReferenceID);
-      if (obj?.Geometry is PointCloud pc) { m_value = pc; _thin = null; _box = BoundingBox.Unset; return true; }
-      return false;
+      if (!(obj?.Geometry is PointCloud pc)) return false;
+      _thin = null; _box = BoundingBox.Unset; _file = null;
+      // Proxy from MegabatImport/MegabatProxy: compute with the full cloud from its file
+      var src = CloudFile.SourceOf(obj.Attributes, doc.Path);
+      if (src != null)
+      {
+        try { m_value = CloudFile.Load(src); _file = src; return true; }
+        catch { }
+      }
+      m_value = pc;
+      return true;
     }
     public override void ClearCaches()
     {

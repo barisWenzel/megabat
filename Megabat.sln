@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Megabat.Core", "src\Megabat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Megabat", "src\Megabat\Megabat.csproj", "{32AB1303-68FA-40A0-8946-CB5A33139EA1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Megabat.Rhino", "src\Megabat.Rhino\Megabat.Rhino.csproj", "{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{32AB1303-68FA-40A0-8946-CB5A33139EA1}.Release|x64.Build.0 = Release|Any CPU
 		{32AB1303-68FA-40A0-8946-CB5A33139EA1}.Release|x86.ActiveCfg = Release|Any CPU
 		{32AB1303-68FA-40A0-8946-CB5A33139EA1}.Release|x86.Build.0 = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|x64.Build.0 = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Debug|x86.Build.0 = Debug|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|x64.ActiveCfg = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|x64.Build.0 = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|x86.ActiveCfg = Release|Any CPU
+		{4D677D3D-6479-48B9-AE91-12CB6C9D9A4C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
