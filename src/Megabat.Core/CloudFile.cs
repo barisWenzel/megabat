@@ -346,6 +346,44 @@ namespace Megabat.Core
       return (int)Math.Max(0, Math.Min(255, Math.Round(v)));
     }
 
+    // Text: one point per line, x y z [r g b], invariant culture, written in parallel blocks
+    public static void WriteXyz(PointCloud c, string path)
+    {
+      bool hasCol = c.ContainsColors;
+      var pts = c.GetPoints();
+      var cols = hasCol ? c.GetColors() : null;
+      int n = pts.Length;
+      var tmp = path + ".tmp";
+      var ci = CultureInfo.InvariantCulture;
+      using (var w = new StreamWriter(tmp, false, new UTF8Encoding(false), 1 << 20))
+      {
+        const int block = 1 << 18;
+        var parts = new string[(n + 4095) / 4096];
+        for (int s = 0; s < n; s += block)
+        {
+          int e = Math.Min(n, s + block);
+          int first = s / 4096, last = (e - 1) / 4096;
+          Parallel.For(first, last + 1, k =>
+          {
+            var sb = new StringBuilder(4096 * 48);
+            int a = k * 4096, b = Math.Min(n, a + 4096);
+            for (int i = a; i < b; i++)
+            {
+              var p = pts[i];
+              sb.Append(p.X.ToString("0.######", ci)).Append(' ').Append(p.Y.ToString("0.######", ci)).Append(' ').Append(p.Z.ToString("0.######", ci));
+              if (hasCol) sb.Append(' ').Append(cols[i].R).Append(' ').Append(cols[i].G).Append(' ').Append(cols[i].B);
+              sb.Append('\n');
+            }
+            parts[k] = sb.ToString();
+          });
+          for (int k = first; k <= last; k++) { w.Write(parts[k]); parts[k] = null; }
+        }
+      }
+      if (File.Exists(path)) File.Delete(path);
+      File.Move(tmp, path);
+      Forget(path);
+    }
+
     // ---- Writing: binary PLY with double coordinates (no precision loss for large coordinates)
 
     public static void WritePly(PointCloud c, string path)

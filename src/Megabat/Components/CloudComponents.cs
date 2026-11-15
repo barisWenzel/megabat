@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using Grasshopper.Kernel;
 using Rhino.Geometry;
@@ -126,6 +127,73 @@ namespace Megabat.Components
       if (warn != null) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, warn);
       DA.SetDataList(0, r.Clouds.Select(c => new CloudGoo(c)));
       DA.SetData(1, string.Format("{0} slices: {1} points, {2}", r.Clouds.Count, string.Join(" / ", r.Clouds.Select(c => c.Count.ToString("N0"))), Ms));
+    }
+  }
+
+  public class ExportCloudComponent : MegabatComponent
+  {
+    public ExportCloudComponent() : base("ExportCloud", "Export",
+      "Write clouds to files (binary PLY or XYZ text) instead of baking them into Rhino. Bring them back as light proxies with the Rhino command MegabatImport.", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000004");
+    public override GH_Exposure Exposure => GH_Exposure.secondary;
+    protected override string IconText => "Ex";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      AddCloud(p, "C", "Clouds to write, e.g. the slices from SplitSlices", GH_ParamAccess.list);
+      int f = p.AddTextParameter("folder", "folder", "Target folder; empty = folder of the .gh file", GH_ParamAccess.item);
+      p[f].Optional = true;
+      p.AddTextParameter("name", "name", "File name without extension; several clouds are numbered name_01, name_02, ...", GH_ParamAccess.item, "cloud");
+      p.AddTextParameter("format", "format", "ply = binary PLY (compact, full precision, colours and normals), xyz = text x y z [r g b] for other programs", GH_ParamAccess.item, "ply");
+      p.AddBooleanParameter("write", "write", "true = write the files; existing files of the same name are overwritten. Use a button or toggle", GH_ParamAccess.item, false);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      p.AddTextParameter("Files", "Files", "Paths of the written files", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Points and size per file, run time", GH_ParamAccess.list);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var C = new List<CloudGoo>(); string folder = null, name = "cloud", format = "ply"; bool write = false;
+      if (!DA.GetDataList(0, C)) return;
+      DA.GetData(1, ref folder); DA.GetData(2, ref name); DA.GetData(3, ref format); DA.GetData(4, ref write);
+      var clouds = C.Where(c => c?.Value != null && c.Value.Count > 0).Select(c => c.Value).ToList();
+      if (clouds.Count == 0) return;
+      format = (format ?? "ply").Trim().TrimStart('.').ToLowerInvariant();
+      if (format != "ply" && format != "xyz") { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "format must be ply or xyz"); return; }
+      if (string.IsNullOrWhiteSpace(folder))
+      {
+        var gh = OnPingDocument()?.FilePath;
+        if (string.IsNullOrEmpty(gh)) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Give a folder or save the .gh file first"); return; }
+        folder = Path.GetDirectoryName(gh);
+      }
+      if (string.IsNullOrWhiteSpace(name)) name = "cloud";
+      name = string.Concat(name.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch));
+      int digits = Math.Max(2, clouds.Count.ToString().Length);
+      var files = new List<string>();
+      for (int i = 0; i < clouds.Count; i++)
+        files.Add(Path.Combine(folder, clouds.Count == 1 ? name + "." + format : name + "_" + (i + 1).ToString().PadLeft(digits, '0') + "." + format));
+      if (!write)
+      {
+        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "write = false: nothing written");
+        DA.SetDataList(1, files.Select((f, i) => string.Format("would write {0:N0} points to {1}", clouds[i].Count, f)));
+        return;
+      }
+      var info = new List<string>();
+      try
+      {
+        Directory.CreateDirectory(folder);
+        for (int i = 0; i < clouds.Count; i++)
+        {
+          if (format == "ply") CloudFile.WritePly(clouds[i], files[i]); else CloudFile.WriteXyz(clouds[i], files[i]);
+          info.Add(string.Format("{0}: {1:N0} points, {2:0.0} MB", Path.GetFileName(files[i]), clouds[i].Count, new FileInfo(files[i]).Length / 1e6));
+        }
+      }
+      catch (Exception e) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.Message); }
+      info.Add(Ms);
+      DA.SetDataList(0, files.Where(File.Exists));
+      DA.SetDataList(1, info);
     }
   }
 }
