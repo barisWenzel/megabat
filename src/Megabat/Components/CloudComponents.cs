@@ -197,6 +197,52 @@ namespace Megabat.Components
     }
   }
 
+  public class ImportCloudComponent : MegabatComponent
+  {
+    public ImportCloudComponent() : base("ImportCloud", "Import",
+      "Read point cloud files directly into Grasshopper, without a Rhino object. The .gh file only stores the path; files are cached.", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000006");
+    public override GH_Exposure Exposure => GH_Exposure.primary;
+    protected override string IconText => "Im";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      p.AddTextParameter("F", "F", "File paths (.e57 .ply .3dm .xyz .pts .txt .csv), e.g. from a File Path parameter", GH_ParamAccess.list);
+      p.AddBooleanParameter("load", "load", "true = read the files; false = nothing is read (e.g. while choosing files)", GH_ParamAccess.item, true);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      AddCloud(p, "Cloud", "One cloud per file; E57 scaled from metres into the document units, other formats taken as they are", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Points per file, run time", GH_ParamAccess.list);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var F = new List<string>(); bool load = true;
+      if (!DA.GetDataList(0, F)) return;
+      DA.GetData(1, ref load);
+      if (!load) { AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "load = false: nothing read"); return; }
+      var units = Rhino.RhinoDoc.ActiveDoc?.ModelUnitSystem ?? Rhino.UnitSystem.None;
+      var outC = new List<CloudGoo>(); var info = new List<string>();
+      foreach (var f in F)
+      {
+        if (string.IsNullOrWhiteSpace(f)) continue;
+        var path = f.Trim().Trim('"');
+        if (!File.Exists(path)) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "File not found: " + path); continue; }
+        try
+        {
+          var sw = System.Diagnostics.Stopwatch.StartNew();
+          var pc = CloudFile.Load(path, units);
+          outC.Add(new CloudGoo(pc, path));
+          info.Add(string.Format("{0}: {1:N0} points, {2:0.0} s", Path.GetFileName(path), pc.Count, sw.Elapsed.TotalSeconds));
+        }
+        catch (Exception e) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, Path.GetFileName(path) + ": " + e.Message); }
+      }
+      DA.SetDataList(0, outC);
+      DA.SetDataList(1, info);
+    }
+  }
+
   public class MergeCloudsComponent : MegabatComponent
   {
     public MergeCloudsComponent() : base("MergeClouds", "Merge",

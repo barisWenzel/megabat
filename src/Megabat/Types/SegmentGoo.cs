@@ -48,8 +48,9 @@ namespace Megabat.Types
     {
       if (m_value?.Points == null || m_value.Points.Count == 0) return;
       if (_thin == null) _thin = CloudUtil.Thin(m_value.Points, 50000);
-      if (_thin.ContainsColors) args.Pipeline.DrawPointCloud(_thin, 2);
-      else args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
+      // Always pass a colour: it is only used if the points have none. Without it Rhino may take
+      // the last display colour (e.g. selection yellow).
+      args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
     }
     public void DrawViewportMeshes(GH_PreviewMeshArgs args) { }
 

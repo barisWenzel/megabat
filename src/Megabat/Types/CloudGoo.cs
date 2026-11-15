@@ -22,6 +22,7 @@ namespace Megabat.Types
     public CloudGoo() { }
     public CloudGoo(PointCloud pc) { m_value = pc; }
     public CloudGoo(Guid id) { _ref = id; }
+    public CloudGoo(PointCloud pc, string file) { m_value = pc; _file = file; }
 
     // The base class does not store the reference itself
     public override Guid ReferenceID { get => _ref; set => _ref = value; }
@@ -126,8 +127,9 @@ namespace Megabat.Types
         _thin = CloudUtil.Thin(m_value, max); _thinMax = max;
         if (m_value.Count > max) Display.PreviewGuard.Notify();
       }
-      if (_thin.ContainsColors) args.Pipeline.DrawPointCloud(_thin, 2);
-      else args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
+      // Always pass a colour: it is only used if the points have none. Without it Rhino may take
+      // the last display colour (e.g. selection yellow).
+      args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
     }
     public void DrawViewportMeshes(GH_PreviewMeshArgs args) { }
 

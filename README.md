@@ -33,6 +33,7 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | Group | Component | Purpose |
 |---|---|---|
 | 1 Cloud | [Cloud](docs/components/Cloud.md) (parameter) | Reference a point cloud from Rhino, no copy, thinned preview |
+| | [ImportCloud](docs/components/ImportCloud.md) | Read e57, ply, xyz and other files directly into Grasshopper |
 | | [Downsample](docs/components/Downsample.md) | Thin to a target count (every k-th point or voxel grid) |
 | | [CropBrep](docs/components/CropBrep.md) | Points inside closed Breps, one cloud per Brep |
 | | [SplitSlices](docs/components/SplitSlices.md) | Split at parallel planes (e.g. storeys) |

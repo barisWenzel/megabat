@@ -88,8 +88,7 @@ namespace Megabat.Components
       {
         if (g is PointCloud pc)
         {
-          if (_col.IsEmpty && pc.ContainsColors) args.Display.DrawPointCloud(pc, _w);
-          else args.Display.DrawPointCloud(pc, _w, c);
+          args.Display.DrawPointCloud(pc, _w, c);   // c only applies to points without colour
         }
         else if (g is Curve cv) args.Display.DrawCurve(cv, c, _w);
         else if (g is Line ln) args.Display.DrawLine(ln, c, _w);
