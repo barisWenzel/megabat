@@ -125,6 +125,9 @@ namespace Megabat.Types
       if (_thin == null || _thinMax != max)
       {
         _thin = CloudUtil.Thin(m_value, max); _thinMax = max;
+        // Never draw the geometry instance of the Rhino object itself: Rhino shares its display
+        // cache, so the cloud turned yellow whenever something was selected in Rhino.
+        if (IsReferencedGeometry && ReferenceEquals(_thin, m_value)) _thin = (PointCloud)m_value.Duplicate();
         if (m_value.Count > max) Display.PreviewGuard.Notify();
       }
       // Always pass a colour: it is only used if the points have none. Without it Rhino may take
