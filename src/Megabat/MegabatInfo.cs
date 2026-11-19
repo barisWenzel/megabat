@@ -24,7 +24,7 @@ namespace Megabat
     {
       Instances.ComponentServer.AddCategoryIcon(Tab.Name, Icons.Logo(16));
       Instances.ComponentServer.AddCategorySymbolName(Tab.Name, 'M');
-      Instances.CanvasCreated += canvas => Display.PreviewGuard.Start();
+      Instances.CanvasCreated += canvas => { Display.PreviewGuard.Start(); Display.CloudConduit.Start(); };
       return GH_LoadingInstruction.Proceed;
     }
   }

@@ -45,10 +45,15 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | 3 Elements | [SnapPolygon](docs/components/SnapPolygon.md) | Snap a sketched room or wall run to the walls |
 | | [SnapOpening](docs/components/SnapOpening.md) | Snap a sketched window or door to the opening, reveal depth |
 | | [FitColumn](docs/components/FitColumn.md) | Round column by circle fit |
+| | [SegmentRect](docs/components/SegmentRect.md) | One rectangular surface per segment, edges trimmed to the neighbours |
 | 4 Section | [Section](docs/components/Section.md) | Architectural section with view beyond |
 | 5 Display | [Show](docs/components/Show.md) | Preview with line weight, point size and colour |
 
 Every component shows its name below the icon, describes all inputs and outputs in the tooltip and reports counts, deviations and run time in `Info`.
+
+## Experimental scripts
+
+The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin: outline of segments, open-vocabulary object detection with Grounding DINO, and photogrammetric point measurement from COLMAP models. See [scripts/README.md](scripts/README.md).
 
 ## Why Megabat: the preview bottleneck
 

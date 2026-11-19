@@ -12,7 +12,7 @@ using Megabat.Core;
 namespace Megabat.Types
 {
   // Point cloud that is not copied when passed on and draws itself thinned
-  public class CloudGoo : GH_GeometricGoo<PointCloud>, IGH_PreviewData, IGH_BakeAwareData
+  public class CloudGoo : GH_GeometricGoo<PointCloud>, IGH_PreviewData, IGH_BakeAwareData, Display.IConduitCloud
   {
     PointCloud _thin; int _thinMax = -1;
     Guid _ref = Guid.Empty;
@@ -120,6 +120,12 @@ namespace Megabat.Types
     public BoundingBox ClippingBox => Boundingbox;
     public void DrawViewportWires(GH_PreviewWireArgs args)
     {
+      if (Display.CloudConduit.Active) return;   // drawn by the Megabat conduit
+      DrawCloud(args.Pipeline, args.Color);
+    }
+    BoundingBox Display.IConduitCloud.PreviewBox => Boundingbox;
+    public void DrawCloud(Rhino.Display.DisplayPipeline pipeline, Color color)
+    {
       if (m_value == null || m_value.Count == 0) return;
       int max = Display.PreviewGuard.Enabled ? Display.PreviewGuard.MaxPts : int.MaxValue;
       if (_thin == null || _thinMax != max)
@@ -132,7 +138,7 @@ namespace Megabat.Types
       }
       // Always pass a colour: it is only used if the points have none. Without it Rhino may take
       // the last display colour (e.g. selection yellow).
-      args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
+      pipeline.DrawPointCloud(_thin, 2, color);
     }
     public void DrawViewportMeshes(GH_PreviewMeshArgs args) { }
 

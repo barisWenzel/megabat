@@ -152,4 +152,56 @@ namespace Megabat.Components
         r.R, 2 * r.R, r.Z1 - r.Z0, r.Count, C.Count, r.Rms, r.Coverage, Ms));
     }
   }
+
+  public class SegmentRectComponent : MegabatComponent
+  {
+    public SegmentRectComponent() : base("SegmentRect", "SegRect",
+      "One rectangular surface per segment: walls horizontal/vertical, inclined faces along their horizontal line, floors and ceilings along the wall direction. Edges are trimmed to the neighbouring planes (wall to wall, wall to ceiling).", Tab.Elements) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000024");
+    public override GH_Exposure Exposure => GH_Exposure.primary;
+    protected override string IconText => "SR";
+    protected override Color IconColor => Icons.Elements;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      AddSegments(p, "Seg", "Segments from Segmentize or Classify");
+      int d = p.AddVectorParameter("Dir", "Dir", "Optional: main direction for floors and ceilings, e.g. Dir from Classify; otherwise taken from the walls, without walls the minimum-area rectangle per face", GH_ParamAccess.item);
+      Optional(p, d);
+      p.AddNumberParameter("q", "q", "Ignored outliers per side [%]; 0 = extreme points", GH_ParamAccess.item, 1);
+      p.AddBooleanParameter("trim", "trim", "true = move edges to the intersection line with a neighbouring plane", GH_ParamAccess.item, true);
+      p.AddNumberParameter("gap", "gap", "Max. distance between edge and neighbour plane for trimming [m]", GH_ParamAccess.item, 0.3);
+      p.AddNumberParameter("angTol", "angTol", "Max. angle between edge and intersection line [°]", GH_ParamAccess.item, 10);
+      p.AddIntegerParameter("sample", "sample", "Points used per segment", GH_ParamAccess.item, 20000);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      p.AddBrepParameter("Srf", "Srf", "Rectangular surface per segment", GH_ParamAccess.list);
+      p.AddCurveParameter("Rect", "Rect", "Outline per segment", GH_ParamAccess.list);
+      p.AddNumberParameter("Cov", "Cov", "Coverage: share of the rectangle covered by points (0 to 1). Low values point to openings, L-shapes or occlusion", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Per segment: size, orientation rule, trimmed edges with neighbour segment, coverage; run time", GH_ParamAccess.list);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var g = new List<SegmentGoo>(); Vector3d dir = Vector3d.Unset; double q = 1, gap = 0.3, angTol = 10; bool trim = true; int sample = 20000;
+      if (!DA.GetDataList(0, g)) return;
+      DA.GetData(1, ref dir); DA.GetData(2, ref q); DA.GetData(3, ref trim); DA.GetData(4, ref gap); DA.GetData(5, ref angTol); DA.GetData(6, ref sample);
+      var segs = Segs(g).Where(x => x.Points != null && x.Points.Count >= 3).ToList();
+      if (segs.Count == 0) return;
+      var rs = SegmentRectCore.Run(segs, dir, q / 100.0, trim, gap, angTol, Math.Max(100, sample));
+      var srf = new List<Brep>(); var crv = new List<Curve>(); var cov = new List<double>(); var info = new List<string>();
+      string[] en = { "start", "end", "bottom", "top" };
+      for (int i = 0; i < rs.Count; i++)
+      {
+        var r = rs[i]; var c = r.Corners();
+        srf.Add(r.Width > 0 && r.Height > 0 ? Brep.CreateFromCornerPoints(c[0], c[1], c[2], c[3], RhinoDoc.ActiveDoc?.ModelAbsoluteTolerance ?? 0.001) : null);
+        crv.Add(new PolylineCurve(new[] { c[0], c[1], c[2], c[3], c[0] }));
+        cov.Add(r.Coverage);
+        var tr = Enumerable.Range(0, 4).Where(k => r.Trimmed[k]).Select(k => en[k] + "→" + r.Neighbour[k]).ToList();
+        info.Add(string.Format("Seg {0}: {1:0.00} × {2:0.00} m, {3}, trimmed {4}, coverage {5:0} %",
+          segs[i].Id, r.Width, r.Height, r.Orientation, tr.Count == 0 ? "none" : string.Join(" ", tr), r.Coverage * 100));
+      }
+      info.Add(Ms);
+      DA.SetDataList(0, srf); DA.SetDataList(1, crv); DA.SetDataList(2, cov); DA.SetDataList(3, info);
+    }
+  }
 }

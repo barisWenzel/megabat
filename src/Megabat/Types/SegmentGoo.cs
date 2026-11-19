@@ -10,7 +10,7 @@ using Megabat.Core;
 namespace Megabat.Types
 {
   // Segment: plane + points + type in one package
-  public class SegmentGoo : GH_Goo<Segment>, IGH_PreviewData, IGH_BakeAwareData
+  public class SegmentGoo : GH_Goo<Segment>, IGH_PreviewData, IGH_BakeAwareData, Display.IConduitCloud
   {
     PointCloud _thin;
 
@@ -46,11 +46,15 @@ namespace Megabat.Types
     public BoundingBox ClippingBox => m_value?.Points == null ? BoundingBox.Empty : m_value.Points.GetBoundingBox(true);
     public void DrawViewportWires(GH_PreviewWireArgs args)
     {
+      if (Display.CloudConduit.Active) return;   // drawn by the Megabat conduit
+      DrawCloud(args.Pipeline, args.Color);
+    }
+    BoundingBox Display.IConduitCloud.PreviewBox => ClippingBox;
+    public void DrawCloud(Rhino.Display.DisplayPipeline pipeline, System.Drawing.Color color)
+    {
       if (m_value?.Points == null || m_value.Points.Count == 0) return;
       if (_thin == null) _thin = CloudUtil.Thin(m_value.Points, 50000);
-      // Always pass a colour: it is only used if the points have none. Without it Rhino may take
-      // the last display colour (e.g. selection yellow).
-      args.Pipeline.DrawPointCloud(_thin, 2, args.Color);
+      pipeline.DrawPointCloud(_thin, 2, color);
     }
     public void DrawViewportMeshes(GH_PreviewMeshArgs args) { }
 
