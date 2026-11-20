@@ -45,15 +45,21 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | 3 Elements | [SnapPolygon](docs/components/SnapPolygon.md) | Snap a sketched room or wall run to the walls |
 | | [SnapOpening](docs/components/SnapOpening.md) | Snap a sketched window or door to the opening, reveal depth |
 | | [FitColumn](docs/components/FitColumn.md) | Round column by circle fit |
-| | [SegmentRect](docs/components/SegmentRect.md) | One rectangular surface per segment, edges trimmed to the neighbours |
+| | [SegmentRect](docs/components/SegmentRect.md) | One rectangular surface per segment, edges trimmed to the neighbours, optional outline |
 | 4 Section | [Section](docs/components/Section.md) | Architectural section with view beyond |
 | 5 Display | [Show](docs/components/Show.md) | Preview with line weight, point size and colour |
+| 6 Photo | [ImportColmap](docs/components/ImportColmap.md) | Oriented photos from a COLMAP model, laid out as image board |
+| | [Deconstruct Photo](docs/components/DeconstructPhoto.md) | Camera plane, image rectangle, file and intrinsics of a photo |
+| | [Measure](docs/components/Measure.md) | Click image points with epipolar lines, stored as Rhino points |
+| | [Intersect](docs/components/Intersect.md) | 3D points from the image clicks (forward intersection) |
+| | [Georef](docs/components/Georef.md) | Scale and position: Helmert from control points or 3 points and a distance |
+| | [Ortho](docs/components/Ortho.md) | Orthophoto of a planar face, e.g. a facade |
 
 Every component shows its name below the icon, describes all inputs and outputs in the tooltip and reports counts, deviations and run time in `Info`.
 
 ## Experimental scripts
 
-The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin: outline of segments, open-vocabulary object detection with Grounding DINO, and photogrammetric point measurement from COLMAP models. See [scripts/README.md](scripts/README.md).
+The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin, at the moment open-vocabulary object detection with Grounding DINO. See [scripts/README.md](scripts/README.md).
 
 ## Why Megabat: the preview bottleneck
 

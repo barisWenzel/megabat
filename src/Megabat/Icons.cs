@@ -14,6 +14,7 @@ namespace Megabat
     public static readonly Color Elements = Color.FromArgb(206, 92, 0);
     public static readonly Color Section = Color.FromArgb(117, 80, 123);
     public static readonly Color Display = Color.FromArgb(85, 87, 83);
+    public static readonly Color Photo = Color.FromArgb(196, 160, 0);
 
     static readonly Dictionary<string, Bitmap> cache = new Dictionary<string, Bitmap>();
 

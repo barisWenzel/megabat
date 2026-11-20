@@ -172,6 +172,8 @@ namespace Megabat.Components
       p.AddNumberParameter("gap", "gap", "Max. distance between edge and neighbour plane for trimming [m]", GH_ParamAccess.item, 0.3);
       p.AddNumberParameter("angTol", "angTol", "Max. angle between edge and intersection line [°]", GH_ParamAccess.item, 10);
       p.AddIntegerParameter("sample", "sample", "Points used per segment", GH_ParamAccess.item, 20000);
+      p.AddNumberParameter("cell", "cell", "Raster size for the outline [m]; 0 = no outline (Shape stays empty)", GH_ParamAccess.item, 0);
+      p.AddIntegerParameter("close", "close", "Outline: cells for closing gaps between points", GH_ParamAccess.item, 2);
     }
     protected override void RegisterOutputParams(GH_OutputParamManager p)
     {
@@ -179,12 +181,15 @@ namespace Megabat.Components
       p.AddCurveParameter("Rect", "Rect", "Outline per segment", GH_ParamAccess.list);
       p.AddNumberParameter("Cov", "Cov", "Coverage: share of the rectangle covered by points (0 to 1). Low values point to openings, L-shapes or occlusion", GH_ParamAccess.list);
       p.AddTextParameter("Info", "Info", "Per segment: size, orientation rule, trimmed edges with neighbour segment, coverage; run time", GH_ParamAccess.list);
+      p.AddBrepParameter("Shape", "Shape", "Only with cell > 0: rectangle cut to the outline of the points (L-shapes, openings as holes), one branch per segment", GH_ParamAccess.tree);
     }
     protected override void SolveInstance(IGH_DataAccess DA)
     {
       var g = new List<SegmentGoo>(); Vector3d dir = Vector3d.Unset; double q = 1, gap = 0.3, angTol = 10; bool trim = true; int sample = 20000;
       if (!DA.GetDataList(0, g)) return;
       DA.GetData(1, ref dir); DA.GetData(2, ref q); DA.GetData(3, ref trim); DA.GetData(4, ref gap); DA.GetData(5, ref angTol); DA.GetData(6, ref sample);
+      double cell = 0; int close = 2; DA.GetData(7, ref cell); DA.GetData(8, ref close);
+      var shape = new Grasshopper.DataTree<Brep>(); double tol = RhinoDoc.ActiveDoc?.ModelAbsoluteTolerance ?? 0.001;
       var segs = Segs(g).Where(x => x.Points != null && x.Points.Count >= 3).ToList();
       if (segs.Count == 0) return;
       var rs = SegmentRectCore.Run(segs, dir, q / 100.0, trim, gap, angTol, Math.Max(100, sample));
@@ -196,12 +201,22 @@ namespace Megabat.Components
         srf.Add(r.Width > 0 && r.Height > 0 ? Brep.CreateFromCornerPoints(c[0], c[1], c[2], c[3], RhinoDoc.ActiveDoc?.ModelAbsoluteTolerance ?? 0.001) : null);
         crv.Add(new PolylineCurve(new[] { c[0], c[1], c[2], c[3], c[0] }));
         cov.Add(r.Coverage);
+        string ol = "";
+        if (cell > 0 && r.Width > 0 && r.Height > 0)
+        {
+          var U = c[1] - c[0]; var V = c[3] - c[0]; U.Unitize(); V.Unitize();
+          var o = OutlineCore.Run(c[0], U, V, r.Width, r.Height, segs[i].Points.GetPoints(), cell, Math.Max(0, close), gap);
+          var b = o.Loops.Count > 0 ? Brep.CreatePlanarBreps(o.Loops.Select(x => (Curve)new PolylineCurve(x)), tol) : null;
+          var path = new Grasshopper.Kernel.Data.GH_Path(i);
+          if (b != null) shape.AddRange(b, path); else shape.EnsurePath(path);
+          ol = string.Format(", outline {0} loops, {1:0} % of the rectangle", o.Loops.Count, (b == null ? 0 : b.Sum(x => x.GetArea())) / (r.Width * r.Height) * 100);
+        }
         var tr = Enumerable.Range(0, 4).Where(k => r.Trimmed[k]).Select(k => en[k] + "→" + r.Neighbour[k]).ToList();
-        info.Add(string.Format("Seg {0}: {1:0.00} × {2:0.00} m, {3}, trimmed {4}, coverage {5:0} %",
-          segs[i].Id, r.Width, r.Height, r.Orientation, tr.Count == 0 ? "none" : string.Join(" ", tr), r.Coverage * 100));
+        info.Add(string.Format("Seg {0}: {1:0.00} × {2:0.00} m, {3}, trimmed {4}, coverage {5:0} %{6}",
+          segs[i].Id, r.Width, r.Height, r.Orientation, tr.Count == 0 ? "none" : string.Join(" ", tr), r.Coverage * 100, ol));
       }
       info.Add(Ms);
-      DA.SetDataList(0, srf); DA.SetDataList(1, crv); DA.SetDataList(2, cov); DA.SetDataList(3, info);
+      DA.SetDataList(0, srf); DA.SetDataList(1, crv); DA.SetDataList(2, cov); DA.SetDataList(3, info); DA.SetDataTree(4, shape);
     }
   }
 }

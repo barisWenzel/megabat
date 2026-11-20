@@ -37,5 +37,6 @@ namespace Megabat
     public const string Elements = "3 Elements";
     public const string Section = "4 Section";
     public const string Display = "5 Display";
+    public const string Photo = "6 Photo";
   }
 }

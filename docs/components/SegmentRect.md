@@ -16,6 +16,8 @@ One rectangular surface per segment. Walls are oriented horizontal/vertical, inc
 | `gap` | Number | 0.3 | Max. distance between edge and neighbour plane for trimming [m] |
 | `angTol` | Number | 10 | Max. angle between edge and intersection line [°] |
 | `sample` | Integer | 20000 | Points used per segment |
+| `cell` | Number | 0 | Raster size for the outline [m]; 0 = no outline |
+| `close` | Integer | 2 | Outline: cells for closing gaps between points |
 
 ## Outputs
 
@@ -25,6 +27,7 @@ One rectangular surface per segment. Walls are oriented horizontal/vertical, inc
 | `Rect` | Curve list | Outline per segment |
 | `Cov` | Number list | Coverage: share of the rectangle covered by points (0 to 1) |
 | `Info` | Text list | Per segment: size, orientation rule, trimmed edges with neighbour segment, coverage; run time |
+| `Shape` | Brep tree | Only with `cell` > 0: rectangle cut to the outline of the points (L-shapes, openings as holes), one branch per segment |
 
 ## How it works
 
@@ -32,5 +35,6 @@ One rectangular surface per segment. Walls are oriented horizontal/vertical, inc
 2. **Extent.** The points are projected into the plane; the rectangle spans the `q` and 100 − `q` percentiles along both axes, so single outliers do not inflate it.
 3. **Trimming.** Each edge is moved to the intersection line with the nearest neighbouring plane that runs parallel to it (within `angTol`), lies within `gap` and actually reaches that line.
 4. **Coverage.** A 40 × 40 raster over the rectangle shows how much of it is covered by points.
+5. **Outline (optional).** With `cell` > 0 the points are rasterised in the rectangle, small gaps are closed (dilate and erode by `close` cells), gaps up to `gap` between points and rectangle edge are filled, and the cell edges are chained into loops. The result in `Shape` follows L-shapes and keeps openings as holes.
 
-A low `Cov` points to L-shaped faces, openings or occlusion. For those, the experimental script `scripts/RectOutline.cs` intersects the rectangle with the raster outline of the points.
+A low `Cov` points to L-shaped faces, openings or occlusion; `Shape` handles those.
