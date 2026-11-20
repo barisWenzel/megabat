@@ -1,7 +1,8 @@
 // Megabat test: open-vocabulary object detection in a point cloud with Grounding DINO
 // Renders views from the centre of the cloud (indoor), runs C:\megabat_detect\detect.py, maps the 2D boxes back to the points.
 // Inputs:  C (PointCloud), prompt (text, e.g. "radiator. toilet. person."), cam (points and/or names of Rhino views, "active" = current view; empty = centre), views (int per point, default 8),
-//          score (double, default 0.35), depth (double, max depth of an object behind its front [m], default 0.5), run (bool)
+//          score (double, default 0.45), depth (double, max depth of an object behind its front [m], default 0.5),
+//          minViews (int, an object must be detected in at least this many views, default 2), run (bool)
 // Outputs: Clouds (one cloud per object), Label, Score, Box, Info
 #region Usings
 using System;
@@ -29,7 +30,7 @@ public class Script_Instance : GH_ScriptInstance
   string _info = "set run = true";
 
   class View { public Point3d Cam; public Vector3d F, R, U; public double Fx; public int[] Idx; public float[] Z; }
-  class Hit { public string Label; public double Score; public HashSet<int> Pts; public BoundingBox BB; }
+  class Hit { public string Label; public double Score; public HashSet<int> Pts; public BoundingBox BB; public int View; public HashSet<int> Views; }
 
   private void RunScript(
 		object C,
@@ -38,6 +39,7 @@ public class Script_Instance : GH_ScriptInstance
 		object views,
 		object score,
 		object depth,
+		object minViews,
 		object run,
 		ref object Clouds,
 		ref object Label,
@@ -49,11 +51,12 @@ public class Script_Instance : GH_ScriptInstance
     var pc = C as PointCloud;
     bool go = run != null && Convert.ToBoolean(run);
     if (go && pc != null && pc.Count > 0 && prompt != null) Detect(pc, prompt.ToString(), cam,
-      views == null ? 8 : Convert.ToInt32(views), score == null ? 0.35 : Convert.ToDouble(score), depth == null ? 0.5 : Convert.ToDouble(depth));
+      views == null ? 8 : Convert.ToInt32(views), score == null ? 0.45 : Convert.ToDouble(score), depth == null ? 0.5 : Convert.ToDouble(depth),
+        minViews == null ? 2 : Convert.ToInt32(minViews));
     Clouds = _clouds; Label = _labels; Score = _scores; Box = _boxes; Info = _info;
   }
 
-  void Detect(PointCloud pc, string prompt, object camIn, int n, double score, double depth)
+  void Detect(PointCloud pc, string prompt, object camIn, int n, double score, double depth, int minViews)
   {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     Directory.CreateDirectory(Dir);
@@ -135,20 +138,38 @@ public class Script_Instance : GH_ScriptInstance
         zs.Sort(); double z0 = zs[zs.Count / 5];
         var keep = new HashSet<int>(ids.Where(i => (pts[i] - v.Cam) * v.F <= z0 + depth));
         if (keep.Count < 10) continue;
-        hits.Add(new Hit { Label = d.GetProperty("label").GetString(), Score = d.GetProperty("score").GetDouble(), Pts = keep, BB = new BoundingBox(keep.Select(i => pts[i])) });
+        hits.Add(new Hit { Label = d.GetProperty("label").GetString(), Score = d.GetProperty("score").GetDouble(), Pts = keep, BB = new BoundingBox(keep.Select(i => pts[i])), View = k });
         c++;
       }
       perView.Add(c);
     }
 
-    // 4 merge the same object seen in several views (same label, overlapping boxes)
+    // 4 merge the same object seen in several views: same label and either many shared 10 cm cells
+    //   (seen from two sides, the points differ, but the cells overlap) or overlapping boxes; transitive (union-find)
+    var cells = hits.Select(h => new HashSet<long>(h.Pts.Select(i => Cell(pts[i], 0.1)))).ToList();
+    var par = Enumerable.Range(0, hits.Count).ToArray();
+    int Find(int x) { while (par[x] != x) x = par[x] = par[par[x]]; return x; }
+    for (int a = 0; a < hits.Count; a++)
+      for (int b = a + 1; b < hits.Count; b++)
+      {
+        if (hits[a].Label != hits[b].Label || Find(a) == Find(b)) continue;
+        int shared = cells[a].Count < cells[b].Count ? cells[a].Count(c => cells[b].Contains(c)) : cells[b].Count(c => cells[a].Contains(c));
+        double share = (double)shared / Math.Max(1, Math.Min(cells[a].Count, cells[b].Count));
+        if (share > 0.2 || Overlap(hits[a].BB, hits[b].BB) > 0.3) par[Find(a)] = Find(b);
+      }
     var merged = new List<Hit>();
-    foreach (var h in hits.OrderByDescending(x => x.Score))
+    foreach (var g in Enumerable.Range(0, hits.Count).GroupBy(Find))
     {
-      var m = merged.FirstOrDefault(x => x.Label == h.Label && Overlap(x.BB, h.BB) > 0.3);
-      if (m == null) merged.Add(h);
-      else { m.Pts.UnionWith(h.Pts); m.BB.Union(h.BB); m.Score = Math.Max(m.Score, h.Score); }
+      var best = g.OrderByDescending(i => hits[i].Score).First();
+      var m = new Hit { Label = hits[best].Label, Score = hits[best].Score, Pts = new HashSet<int>(), BB = BoundingBox.Empty, Views = new HashSet<int>(g.Select(i => hits[i].View)) };
+      foreach (var i in g) { m.Pts.UnionWith(hits[i].Pts); m.BB.Union(hits[i].BB); }
+      merged.Add(m);
     }
+    // 5 confirmation: an object must be seen in at least minViews views (false detections rarely repeat) and have enough points
+    int need = Math.Max(1, Math.Min(minViews, vs.Count));
+    int before = merged.Count;
+    merged = merged.Where(m => m.Views.Count >= need && m.Pts.Count >= 300).ToList();
+    if (before > merged.Count) notes.Add((before - merged.Count) + " dropped (fewer than " + need + " views or 300 points)");
 
     _clouds = new List<PointCloud>(); _labels = new List<string>(); _scores = new List<double>(); _boxes = new List<Box>();
     foreach (var m in merged)
@@ -162,6 +183,8 @@ public class Script_Instance : GH_ScriptInstance
       string.Join(", ", merged.GroupBy(x => x.Label).Select(g => g.Key + " " + g.Count())),
       tRender, (tDetect - tRender) / 1000.0, doc.GetProperty("load_s").GetDouble(), doc.GetProperty("device").GetString(), sw.ElapsedMilliseconds / 1000.0, Dir, notes.Count > 0 ? "; " + string.Join("; ", notes) : "");
   }
+
+  static long Cell(Point3d p, double v) { return ((long)Math.Floor(p.X / v) * 1000003L + (long)Math.Floor(p.Y / v)) * 1000033L + (long)Math.Floor(p.Z / v); }
 
   // Share of the smaller box that lies inside the other
   static double Overlap(BoundingBox a, BoundingBox b)

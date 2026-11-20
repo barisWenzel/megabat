@@ -29,15 +29,18 @@ Open-vocabulary object detection in a point cloud with Grounding DINO: the cloud
 |---|---|
 | `C` | Point cloud (Megabat Cloud or Rhino point cloud) |
 | `prompt` | Classes separated by a dot and a space, in English, e.g. `radiator. door. window.` |
-| `cam` | Camera standpoints (points, `views` horizontal views each) and/or names of Rhino named views; `active` = current view; empty = centre of the cloud |
+| `cam` | Camera standpoints (points, e.g. from [ViewPoints](../docs/components/ViewPoints.md), `views` horizontal views each) and/or names of Rhino named views; `active` = current view; empty = centre of the cloud |
 | `views` | Views per standpoint, default 8 |
-| `score` | Minimum detection score, default 0.35 |
+| `score` | Minimum detection score, default 0.45 |
 | `depth` | Max. depth of an object behind its front [m], default 0.5 |
+| `minViews` | An object must be detected in at least this many views, default 2; false detections rarely repeat |
 | `run` | true = run (about 30 to 60 s, the model is loaded each time) |
 
 Outputs: `Clouds` (points per object), `Label`, `Score`, `Box` (3D bounding box), `Info`. The rendered views are written to `C:\megabat_detect\views`.
 
-Known limits: grey (unscanned) areas are sometimes detected as doors; dense clouds give much better views than thinned ones.
+Objects seen in several views are merged when they share 10 cm cells or their boxes overlap. Objects with fewer than 300 points are dropped.
+
+Known limits: grey (unscanned) areas are sometimes detected as doors; boxes of large objects may include part of the wall behind; clouds thinned to more than about 2 cm give poor views.
 
 ## Moved into the plugin
 
