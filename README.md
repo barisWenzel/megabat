@@ -57,6 +57,10 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 
 Every component shows its name below the icon, describes all inputs and outputs in the tooltip and reports counts, deviations and run time in `Info`.
 
+## Examples
+
+The folder [`examples`](examples) holds one Grasshopper file per workflow (cloud tools, segments, snapping, sections, photogrammetry, object detection) together with a small test cloud from the 3DSES dataset. See [examples/README.md](examples/README.md).
+
 ## Experimental scripts
 
 The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin, at the moment open-vocabulary object detection with Grounding DINO. See [scripts/README.md](scripts/README.md).

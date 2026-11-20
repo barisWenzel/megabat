@@ -30,6 +30,17 @@ namespace Megabat.Components
       base.BeforeSolveInstance();
     }
 
+    // Relative paths are taken from the folder of the .gh file (absolute paths stay as they are)
+    protected string Resolve(string path)
+    {
+      if (string.IsNullOrWhiteSpace(path)) return path;
+      path = path.Trim().Trim('"');
+      if (System.IO.Path.IsPathRooted(path)) return path;
+      var gh = OnPingDocument()?.FilePath;
+      if (string.IsNullOrEmpty(gh)) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Relative path: save the .gh file first"); return path; }
+      return System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(gh), path));
+    }
+
     protected string Ms => Watch == null ? "" : Watch.Elapsed.TotalMilliseconds.ToString("0") + " ms";
 
     // Parameter helpers

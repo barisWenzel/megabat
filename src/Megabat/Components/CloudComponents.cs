@@ -142,7 +142,7 @@ namespace Megabat.Components
     protected override void RegisterInputParams(GH_InputParamManager p)
     {
       AddCloud(p, "C", "Clouds to write, e.g. the slices from SplitSlices", GH_ParamAccess.list);
-      int f = p.AddTextParameter("folder", "folder", "Target folder; empty = folder of the .gh file", GH_ParamAccess.item);
+      int f = p.AddTextParameter("folder", "folder", "Target folder; empty = folder of the .gh file; relative paths start there", GH_ParamAccess.item);
       p[f].Optional = true;
       p.AddTextParameter("name", "name", "File name without extension; several clouds are numbered name_01, name_02, ...", GH_ParamAccess.item, "cloud");
       p.AddTextParameter("format", "format", "ply = binary PLY (compact, full precision, colours and normals), xyz = text x y z [r g b] for other programs", GH_ParamAccess.item, "ply");
@@ -162,6 +162,7 @@ namespace Megabat.Components
       if (clouds.Count == 0) return;
       format = (format ?? "ply").Trim().TrimStart('.').ToLowerInvariant();
       if (format != "ply" && format != "xyz") { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "format must be ply or xyz"); return; }
+      if (!string.IsNullOrWhiteSpace(folder)) folder = Resolve(folder);
       if (string.IsNullOrWhiteSpace(folder))
       {
         var gh = OnPingDocument()?.FilePath;
@@ -208,7 +209,7 @@ namespace Megabat.Components
 
     protected override void RegisterInputParams(GH_InputParamManager p)
     {
-      p.AddTextParameter("F", "F", "File paths (.e57 .ply .3dm .xyz .pts .txt .csv), e.g. from a File Path parameter", GH_ParamAccess.list);
+      p.AddTextParameter("F", "F", "File paths (.e57 .ply .3dm .xyz .pts .txt .csv), e.g. from a File Path parameter; relative paths start at the folder of the .gh file", GH_ParamAccess.list);
       p.AddBooleanParameter("load", "load", "true = read the files; false = nothing is read (e.g. while choosing files)", GH_ParamAccess.item, true);
     }
     protected override void RegisterOutputParams(GH_OutputParamManager p)
@@ -227,7 +228,7 @@ namespace Megabat.Components
       foreach (var f in F)
       {
         if (string.IsNullOrWhiteSpace(f)) continue;
-        var path = f.Trim().Trim('"');
+        var path = Resolve(f);
         if (!File.Exists(path)) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "File not found: " + path); continue; }
         try
         {

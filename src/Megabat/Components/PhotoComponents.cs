@@ -59,7 +59,7 @@ namespace Megabat.Components
 
     protected override void RegisterInputParams(GH_InputParamManager p)
     {
-      p.AddTextParameter("dir", "dir", "Folder with cameras.txt and images.txt", GH_ParamAccess.item);
+      p.AddTextParameter("dir", "dir", "Folder with cameras.txt and images.txt; relative paths start at the folder of the .gh file", GH_ParamAccess.item);
       int a = p.AddTextParameter("img", "img", "Folder with the images; default dir\\..\\images, dir\\images or dir", GH_ParamAccess.item);
       int b = p.AddNumberParameter("px", "px", "Size of one pixel in document units; default 1 mm", GH_ParamAccess.item);
       p.AddIntegerParameter("cols", "cols", "Images per row", GH_ParamAccess.item, 6);
@@ -76,12 +76,12 @@ namespace Megabat.Components
       string dir = null, img = null; double px = double.NaN; int cols = 6; bool bake = false;
       if (!DA.GetData(0, ref dir)) return;
       DA.GetData(1, ref img); DA.GetData(2, ref px); DA.GetData(3, ref cols); DA.GetData(4, ref bake);
-      dir = dir.Trim().Trim('"');
+      dir = Resolve(dir);
       if (!File.Exists(Path.Combine(dir, "images.txt")) || !File.Exists(Path.Combine(dir, "cameras.txt")))
       { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "cameras.txt or images.txt not found in dir; export the model as text"); return; }
       double s = double.IsNaN(px) || px <= 0 ? RhinoMath.UnitScale(UnitSystem.Millimeters, RhinoDoc.ActiveDoc?.ModelUnitSystem ?? UnitSystem.Meters) : px;
       cols = Math.Max(1, cols);
-      string idir = string.IsNullOrWhiteSpace(img) ? null : img.Trim().Trim('"');
+      string idir = string.IsNullOrWhiteSpace(img) ? null : Resolve(img);
       if (idir == null)
         foreach (var c in new[] { Path.Combine(dir, "..", "images"), Path.Combine(dir, "images"), dir })
           if (Directory.Exists(c)) { idir = Path.GetFullPath(c); break; }
@@ -555,7 +555,7 @@ namespace Megabat.Components
       if (r.Seen == 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "no photo sees the face (check Xform and image files)"); return; }
 
       if (string.IsNullOrWhiteSpace(file)) file = Path.Combine(Path.GetTempPath(), "Megabat", "ortho_" + InstanceGuid.ToString("N").Substring(0, 8) + ".png");
-      file = file.Trim().Trim('"');
+      file = Resolve(file);
       Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file)));
       Save(r, file);
 

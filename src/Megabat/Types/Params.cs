@@ -64,10 +64,10 @@ namespace Megabat.Types
 
     bool _hidden;
     public bool Hidden { get => _hidden; set => _hidden = value; }
-    public override bool Write(GH_IWriter writer) { writer.SetBoolean("Hidden", _hidden); writer.SetInt32("DisplayMode", DisplayMode); return base.Write(writer); }
+    public override bool Write(GH_IWriter writer) { if (_hidden) writer.SetBoolean("MegabatHidden", true); writer.SetInt32("DisplayMode", DisplayMode); return base.Write(writer); }
     public override bool Read(GH_IReader reader)
     {
-      if (reader.ItemExists("Hidden")) _hidden = reader.GetBoolean("Hidden");
+      _hidden = reader.ItemExists("MegabatHidden") ? reader.GetBoolean("MegabatHidden") : reader.ItemExists("Hidden") && reader.GetBoolean("Hidden");
       if (reader.ItemExists("DisplayMode")) DisplayMode = reader.GetInt32("DisplayMode");
       return base.Read(reader);
     }
@@ -98,8 +98,8 @@ namespace Megabat.Types
 
     bool _hidden;
     public bool Hidden { get => _hidden; set => _hidden = value; }
-    public override bool Write(GH_IWriter writer) { writer.SetBoolean("Hidden", _hidden); return base.Write(writer); }
-    public override bool Read(GH_IReader reader) { if (reader.ItemExists("Hidden")) _hidden = reader.GetBoolean("Hidden"); return base.Read(reader); }
+    public override bool Write(GH_IWriter writer) { if (_hidden) writer.SetBoolean("MegabatHidden", true); return base.Write(writer); }
+    public override bool Read(GH_IReader reader) { _hidden = reader.ItemExists("MegabatHidden") ? reader.GetBoolean("MegabatHidden") : reader.ItemExists("Hidden") && reader.GetBoolean("Hidden"); return base.Read(reader); }
     public bool IsPreviewCapable => true;
     public BoundingBox ClippingBox => Preview_ComputeClippingBox();
     public void DrawViewportWires(IGH_PreviewArgs args) => Preview_DrawWires(args);
