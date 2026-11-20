@@ -50,7 +50,7 @@ namespace Megabat.Core
     static int Count(bool[,] g) { int c = 0; foreach (var b in g) if (b) c++; return c; }
 
     // Square structuring element (2r+1); separable: rows then columns
-    static bool[,] Morph(bool[,] g, int r, bool dilate)
+    internal static bool[,] Morph(bool[,] g, int r, bool dilate)
     {
       int nx = g.GetLength(0), ny = g.GetLength(1);
       var a = new bool[nx, ny]; var b = new bool[nx, ny];

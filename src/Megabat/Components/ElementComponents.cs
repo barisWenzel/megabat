@@ -219,4 +219,60 @@ namespace Megabat.Components
       DA.SetDataList(0, srf); DA.SetDataList(1, crv); DA.SetDataList(2, cov); DA.SetDataList(3, info); DA.SetDataTree(4, shape);
     }
   }
+
+  public class OpeningsComponent : MegabatComponent
+  {
+    public OpeningsComponent() : base("Openings", "Openings",
+      "Windows and doors from the holes in the walls: glass and open doors return no points, so they are empty regions in the wall. Classified by sill height; floor-level openings by what is seen through them (door: points on both sides; full-height window: nothing behind).", Tab.Elements) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000025");
+    public override GH_Exposure Exposure => GH_Exposure.primary;
+    protected override string IconText => "Op";
+    protected override Color IconColor => Icons.Elements;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      AddSegments(p, "Seg", "Segments from Classify (walls are used)");
+      AddCloud(p, "C", "Optional: all points, to see through floor-level openings (door or full-height window); without C they stay 'floor opening'", optional: true);
+      int d = p.AddVectorParameter("Dir", "Dir", "Optional: main direction (Classify › Dir)", GH_ParamAccess.item);
+      p.AddNumberParameter("cell", "cell", "Raster size [m]", GH_ParamAccess.item, 0.05);
+      p.AddNumberParameter("minW", "minW", "Minimum width [m]", GH_ParamAccess.item, 0.4);
+      p.AddNumberParameter("minH", "minH", "Minimum height [m]", GH_ParamAccess.item, 0.4);
+      p.AddNumberParameter("sill", "sill", "Openings starting higher than this above the bottom of the wall are windows [m]", GH_ParamAccess.item, 0.3);
+      p.AddNumberParameter("depth", "depth", "How far to look through the opening on both sides [m]", GH_ParamAccess.item, 1.5);
+      p.AddNumberParameter("dense", "dense", "Points per m² of opening on both sides from which a floor-level opening counts as door; below a tenth of it as full-height window", GH_ParamAccess.item, 100);
+      Optional(p, d);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      p.AddCurveParameter("Rect", "Rect", "Opening rectangles in the wall plane", GH_ParamAccess.list);
+      p.AddTextParameter("Type", "Type", "window, door, full-height window or floor opening (unclear)", GH_ParamAccess.list);
+      p.AddNumberParameter("Width", "Width", "Width [m]", GH_ParamAccess.list);
+      p.AddNumberParameter("Height", "Height", "Height [m]", GH_ParamAccess.list);
+      p.AddNumberParameter("Sill", "Sill", "Sill height above the bottom of the wall [m]; 0 = floor-level", GH_ParamAccess.list);
+      p.AddNumberParameter("Behind", "Behind", "Points per m² of opening on the less dense side", GH_ParamAccess.list);
+      p.AddIntegerParameter("Wall", "Wall", "Index of the wall segment", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Number of openings per type, run time", GH_ParamAccess.item);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var g = new List<SegmentGoo>(); CloudGoo cg = null; Vector3d dir = Vector3d.Unset; var o = new OpeningsCore.Options();
+      if (!DA.GetDataList(0, g)) return;
+      DA.GetData(1, ref cg); DA.GetData(2, ref dir);
+      DA.GetData(3, ref o.Cell); DA.GetData(4, ref o.MinW); DA.GetData(5, ref o.MinH); DA.GetData(6, ref o.Sill); DA.GetData(7, ref o.Depth); DA.GetData(8, ref o.Dense);
+      if (o.Cell <= 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "cell must be > 0"); return; }
+      var segs = Segs(g).Where(x => x.Points != null && x.Points.Count >= 3).ToList();
+      if (segs.Count == 0) return;
+      var rects = SegmentRectCore.Run(segs, dir, 0.01, true, 0.3, 10, 20000);
+      var ops = OpeningsCore.Run(segs, rects, cg?.Value, o);
+      DA.SetDataList(0, ops.Select(x => new PolylineCurve(new[] { x.Corners[0], x.Corners[1], x.Corners[2], x.Corners[3], x.Corners[0] })));
+      DA.SetDataList(1, ops.Select(x => x.Type));
+      DA.SetDataList(2, ops.Select(x => Math.Round(x.Width, 3)));
+      DA.SetDataList(3, ops.Select(x => Math.Round(x.Height, 3)));
+      DA.SetDataList(4, ops.Select(x => Math.Round(x.Sill, 3)));
+      DA.SetDataList(5, ops.Select(x => Math.Round(x.Behind, 1)));
+      DA.SetDataList(6, ops.Select(x => segs[x.Segment].Id));
+      DA.SetData(7, string.Format("{0} openings ({1}); {2}", ops.Count,
+        ops.Count == 0 ? "none" : string.Join(", ", ops.GroupBy(x => x.Type).Select(x => x.Count() + " " + x.Key)), Ms));
+    }
+  }
 }
