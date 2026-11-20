@@ -11,7 +11,7 @@ Open a Rhino file in **metres** for 01 to 04 and 06 (the point cloud is in metre
 | `03_Snap.gh` | SnapPolygon (room from a rough sketch), SnapOpening (door with reveal depth) | `data/S170_1cm.ply` |
 | `04_Section.gh` | Section as plan and as vertical section, view beyond with Show | `data/S170_1cm.ply` |
 | `05_Photo.gh` + `05_Photo.3dm` | ImportColmap, Measure, Intersect, Georef, Ortho | South Building (download, see below) |
-| `06_Detect.gh` | Detect (experimental script): objects from a text prompt with Grounding DINO | `data/S170_1cm.ply`, Python setup in [scripts/README.md](../scripts/README.md) |
+| `06_Detect.gh` | ViewPoints and Detect (experimental script): objects from a text prompt with Grounding DINO | `data/S170_1cm.ply`, Python setup in [scripts/README.md](../scripts/README.md) |
 
 ## 01 Cloud
 
@@ -57,7 +57,7 @@ The .3dm holds the measured points P003 to P010 on the layer `Megabat::Measure`;
 
 ## 06 Detect
 
-Needs Python with PyTorch and an NVIDIA GPU; setup in [scripts/README.md](../scripts/README.md). Set the prompt (classes separated by a dot and a space), then switch `run` to true. One run takes 30 to 60 s.
+Needs Python with PyTorch and an NVIDIA GPU; setup in [scripts/README.md](../scripts/README.md). ViewPoints chooses camera standpoints that together see most of the room; Detect renders 8 views from each. Set the prompt (classes separated by a dot and a space), then switch `run` to true. One run takes about a minute.
 
 ## Data and licence
 

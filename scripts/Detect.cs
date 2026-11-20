@@ -34,6 +34,7 @@ public class Script_Instance : GH_ScriptInstance
   private void RunScript(
 		object C,
 		object prompt,
+		List<object> cam,
 		object views,
 		object score,
 		object depth,

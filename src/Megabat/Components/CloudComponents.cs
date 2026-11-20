@@ -275,4 +275,58 @@ namespace Megabat.Components
       DA.SetData(1, string.Format("{0} clouds → {1:N0} points, {2}", clouds.Count, r.Count, Ms));
     }
   }
+
+  public class ViewPointsComponent : MegabatComponent
+  {
+    public ViewPointsComponent() : base("ViewPoints", "Views",
+      "Standpoints that see as much of the surfaces as possible, e.g. camera positions for Detect or scanner positions. Occupancy grid with normals, candidates at a height above the floor, line of sight with distance and incidence angle, greedy choice.", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000007");
+    public override GH_Exposure Exposure => GH_Exposure.secondary;
+    protected override string IconText => "VP";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      AddCloud(p, "C", "Point cloud");
+      p.AddNumberParameter("voxel", "voxel", "Voxel size of the occupancy grid [m]", GH_ParamAccess.item, 0.1);
+      p.AddNumberParameter("height", "height", "Height of the standpoints above the floor [m]", GH_ParamAccess.item, 1.5);
+      p.AddNumberParameter("step", "step", "Spacing of the candidate grid [m]", GH_ParamAccess.item, 0.5);
+      p.AddNumberParameter("clear", "clear", "Free space around a standpoint [m]", GH_ParamAccess.item, 0.3);
+      p.AddNumberParameter("dMin", "dMin", "Minimum distance (blind spot) [m]", GH_ParamAccess.item, 0.5);
+      p.AddNumberParameter("dMax", "dMax", "Maximum distance [m]", GH_ParamAccess.item, 15);
+      p.AddNumberParameter("angle", "angle", "Maximum incidence angle to the surface normal [°]", GH_ParamAccess.item, 70);
+      p.AddNumberParameter("cover", "cover", "Stop when this share of the surface voxels is seen (0 to 1)", GH_ParamAccess.item, 0.95);
+      p.AddIntegerParameter("max", "max", "Maximum number of standpoints", GH_ParamAccess.item, 5);
+      p.AddBooleanParameter("room", "room", "true = only candidates below a ceiling (indoors); false = also outdoors", GH_ParamAccess.item, true);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      p.AddPointParameter("Pts", "Pts", "Standpoints in the order chosen, e.g. for Detect › cam", GH_ParamAccess.list);
+      p.AddNumberParameter("Cover", "Cover", "Cumulative share of the surface voxels seen after each standpoint", GH_ParamAccess.list);
+      AddCloud(p, "Seen", "Voxels first seen from each standpoint (one cloud per standpoint)", GH_ParamAccess.list);
+      int c = p.AddPointParameter("Cand", "Cand", "All candidate positions", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Voxels, candidates, standpoints, coverage, run time", GH_ParamAccess.item);
+      if (p[c] is IGH_PreviewObject po) po.Hidden = true;
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      CloudGoo cg = null; var o = new ViewCore.Options();
+      if (!DA.GetData(0, ref cg) || cg?.Value == null) return;
+      DA.GetData(1, ref o.Voxel); DA.GetData(2, ref o.Height); DA.GetData(3, ref o.Step); DA.GetData(4, ref o.Clear);
+      DA.GetData(5, ref o.DMin); DA.GetData(6, ref o.DMax); DA.GetData(7, ref o.Angle); DA.GetData(8, ref o.Cover);
+      DA.GetData(9, ref o.Max); DA.GetData(10, ref o.Room);
+      if (o.Voxel <= 0) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "voxel must be > 0"); return; }
+      ViewCore.Result r;
+      try { r = ViewCore.Run(cg.Value, o); }
+      catch (ArgumentException e) { AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.Message); return; }
+      if (r.Candidates.Count == 0) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "no candidates: check height, clear, step or switch room off");
+      DA.SetDataList(0, r.Points); DA.SetDataList(1, r.Cover);
+      var seen = new List<CloudGoo>();
+      for (int i = 0; i < r.Seen.Count; i++) { var pc = new PointCloud(r.Seen[i]); seen.Add(new CloudGoo(pc)); }
+      DA.SetDataList(2, seen); DA.SetDataList(3, r.Candidates);
+      DA.SetData(4, string.Format("{0:N0} surface voxels, {1} candidates, {2} standpoints, coverage {3:0} % ({4}); {5}",
+        r.Voxels, r.Candidates.Count, r.Points.Count, r.Cover.Count > 0 ? r.Cover[r.Cover.Count - 1] * 100 : 0,
+        string.Join(" ", r.Cover.Select(x => (x * 100).ToString("0") + "%")), Ms));
+    }
+  }
 }

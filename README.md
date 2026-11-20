@@ -39,6 +39,7 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | | [SplitSlices](docs/components/SplitSlices.md) | Split at parallel planes (e.g. storeys) |
 | | [MergeClouds](docs/components/MergeClouds.md) | Merge several clouds into one |
 | | [ExportCloud](docs/components/ExportCloud.md) | Write clouds to PLY or XYZ files instead of baking |
+| | [ViewPoints](docs/components/ViewPoints.md) | Standpoints that see most of the surfaces (cameras for Detect, scanner positions) |
 | 2 Segments | [Segmentize](docs/components/Segmentize.md) | Find planes (RANSAC), output as segments |
 | | [Classify](docs/components/Classify.md) | Horizontal / vertical / inclined, snap to Z and main direction |
 | | [Deconstruct Segment](docs/components/DeconstructSegment.md) | Plane, points, type of a segment |
