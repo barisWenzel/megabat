@@ -27,6 +27,14 @@ namespace Megabat.Display
       get => Instances.Settings.GetValue(KeyMax, DefaultMax);
       set { Instances.Settings.SetValue(KeyMax, value); Instances.Settings.WritePersistentSettings(); }
     }
+    // Level of detail (octree) instead of a fixed thinned cloud; MaxPts is then the point budget per cloud and view
+    const string KeyLod = "Megabat.PreviewGuard.Lod";
+    public static bool Lod
+    {
+      get => Instances.Settings.GetValue(KeyLod, false);
+      set { Instances.Settings.SetValue(KeyLod, value); Instances.Settings.WritePersistentSettings(); }
+    }
+    public static void SetLod(bool on) { Lod = on; Refresh(); }
     public static bool Patched { get; private set; }
     public static string Error { get; private set; }
     public static event Action Changed;
@@ -153,6 +161,11 @@ namespace Megabat.Display
         else System.Media.SystemSounds.Beep.Play();
       };
       b.DropDownItems.Add(box);
+      b.DropDownItems.Add(new ToolStripSeparator());
+      var lod = new ToolStripMenuItem("Level of detail (octree): full detail when zooming in") { Name = "PreviewGuardLod",
+        ToolTipText = "Megabat clouds are drawn from an octree: only visible parts, finer the closer they are, within the point limit. Built once per cloud in the background. Per cloud: right click on the Cloud parameter › Display." };
+      lod.Click += (s, e) => SetLod(!Lod);
+      b.DropDownItems.Add(lod);
       var sep = new ToolStripSeparator { Name = "PreviewGuardSep" };
       var off = ts.Items["PreviewOffButton"];
       int idx = off != null ? ts.Items.IndexOf(off) + 1 : ts.Items.Count;
@@ -179,7 +192,7 @@ namespace Megabat.Display
       btn.ToolTipText = "PreviewGuard (Megabat) " + (on ? "on" : "off") + ": large point clouds are thinned to at most " +
         max.ToString("N0") + " points in the preview.\nClick: on/off, arrow: choose point limit";
       foreach (ToolStripItem it in btn.DropDownItems)
-        if (it is ToolStripMenuItem mi) mi.Checked = on && (int)mi.Tag == max;
+        if (it is ToolStripMenuItem mi) mi.Checked = mi.Tag is int t ? on && t == max : mi.Name == "PreviewGuardLod" && Lod;
       if (box != null) box.Text = max.ToString("N0");
     }
 

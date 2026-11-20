@@ -91,6 +91,7 @@ A button in the Grasshopper canvas toolbar, next to the preview modes.
 1. **Click:** switch on or off. It is on at every start of Rhino; switching off only lasts for the current session.
 2. **Arrow:** choose the maximum number of points per cloud (250 k, 500 k, 1 M, 2 M) or type your own value. The default is 1 000 000. The chosen value is remembered.
 3. The first time a cloud is thinned in a session, a short message explains what happens.
+4. **Level of detail (octree)**, in the arrow menu: Megabat clouds are drawn from an octree instead of a fixed thinned copy. Only the visible parts are drawn, finer the closer they are, so zooming in shows the full detail while the point limit holds per cloud and view. The octree is built once per cloud in the background (a few seconds for ten million points); until then the thinned cloud is shown. Off by default; the choice is remembered. Per cloud it can be set on the Cloud parameter (right click › Display).
 
 ## Rhino: large clouds as light proxies
 

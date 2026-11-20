@@ -47,10 +47,10 @@ namespace Megabat.Types
     public void DrawViewportWires(GH_PreviewWireArgs args)
     {
       if (Display.CloudConduit.Active) return;   // drawn by the Megabat conduit
-      DrawCloud(args.Pipeline, args.Color);
+      DrawCloud(args.Pipeline, args.Color, 0);
     }
     BoundingBox Display.IConduitCloud.PreviewBox => ClippingBox;
-    public void DrawCloud(Rhino.Display.DisplayPipeline pipeline, System.Drawing.Color color)
+    public void DrawCloud(Rhino.Display.DisplayPipeline pipeline, System.Drawing.Color color, int mode)
     {
       if (m_value?.Points == null || m_value.Points.Count == 0) return;
       if (_thin == null) _thin = CloudUtil.Thin(m_value.Points, 50000);

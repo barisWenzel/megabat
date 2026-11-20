@@ -12,6 +12,21 @@ namespace Megabat.Types
   // Cloud parameter: references point clouds from Rhino, draws thinned, never copies
   public class CloudParam : GH_PersistentGeometryParam<CloudGoo>, IGH_PreviewObject, IGH_BakeAwareObject
   {
+    // Display: 0 = as set in the PreviewGuard menu, 1 = thinned, 2 = level of detail
+    public int DisplayMode { get; set; }
+
+    public override void AppendAdditionalMenuItems(System.Windows.Forms.ToolStripDropDown menu)
+    {
+      base.AppendAdditionalMenuItems(menu);
+      Menu_AppendSeparator(menu);
+      string[] names = { "Display: as set in PreviewGuard", "Display: thinned", "Display: level of detail (octree)" };
+      for (int i = 0; i < 3; i++)
+      {
+        int m = i;
+        Menu_AppendItem(menu, names[i], (s, e) => { RecordUndoEvent("Cloud display"); DisplayMode = m; Rhino.RhinoDoc.ActiveDoc?.Views.Redraw(); }, true, DisplayMode == i);
+      }
+    }
+
     public CloudParam() : base(new GH_InstanceDescription("Cloud", "Cloud",
       "Point cloud for Megabat. Right click: set point cloud from Rhino. Passed on without copying and displayed thinned.",
       Tab.Name, Tab.Cloud)) { }
@@ -49,8 +64,13 @@ namespace Megabat.Types
 
     bool _hidden;
     public bool Hidden { get => _hidden; set => _hidden = value; }
-    public override bool Write(GH_IWriter writer) { writer.SetBoolean("Hidden", _hidden); return base.Write(writer); }
-    public override bool Read(GH_IReader reader) { if (reader.ItemExists("Hidden")) _hidden = reader.GetBoolean("Hidden"); return base.Read(reader); }
+    public override bool Write(GH_IWriter writer) { writer.SetBoolean("Hidden", _hidden); writer.SetInt32("DisplayMode", DisplayMode); return base.Write(writer); }
+    public override bool Read(GH_IReader reader)
+    {
+      if (reader.ItemExists("Hidden")) _hidden = reader.GetBoolean("Hidden");
+      if (reader.ItemExists("DisplayMode")) DisplayMode = reader.GetInt32("DisplayMode");
+      return base.Read(reader);
+    }
     public bool IsPreviewCapable => true;
     public BoundingBox ClippingBox => Preview_ComputeClippingBox();
     public void DrawViewportWires(IGH_PreviewArgs args) => Preview_DrawWires(args);

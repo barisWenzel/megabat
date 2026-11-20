@@ -14,7 +14,8 @@ namespace Megabat.Display
   public interface IConduitCloud
   {
     BoundingBox PreviewBox { get; }
-    void DrawCloud(DisplayPipeline pipeline, Color color);
+    // mode: 0 = global setting, 1 = thinned, 2 = level of detail (from the Cloud parameter)
+    void DrawCloud(DisplayPipeline pipeline, Color color, int mode);
   }
 
   // Draws the Megabat clouds of the active Grasshopper document in an own Rhino display conduit.
@@ -43,7 +44,7 @@ namespace Megabat.Display
       try { return (bool)m.Invoke(d, a); } catch { return true; }
     }
 
-    static IEnumerable<(IConduitCloud cloud, bool sel)> Items(GH_Document d)
+    static IEnumerable<(IConduitCloud cloud, bool sel, int mode)> Items(GH_Document d)
     {
       bool selOnly = d.PreviewFilter == GH_PreviewFilter.Selected;
       foreach (var o in d.Objects)
@@ -57,7 +58,7 @@ namespace Megabat.Display
         else continue;
         foreach (var p in ps)
           foreach (var g in p.VolatileData.AllData(true))
-            if (g is IConduitCloud cc) yield return (cc, sel);
+            if (g is IConduitCloud cc) yield return (cc, sel, p is Types.CloudParam cp ? cp.DisplayMode : 0);
       }
     }
 
@@ -65,14 +66,14 @@ namespace Megabat.Display
     {
       var d = Instances.ActiveCanvas?.Document;
       if (!Can(d, _canBox, null)) return;
-      try { foreach (var (cc, _) in Items(d)) e.IncludeBoundingBox(cc.PreviewBox); } catch { }
+      try { foreach (var (cc, _, _) in Items(d)) e.IncludeBoundingBox(cc.PreviewBox); } catch { }
     }
 
     protected override void PostDrawObjects(DrawEventArgs e)
     {
       var d = Instances.ActiveCanvas?.Document;
       if (!Can(d, _canDraw, new object[] { e })) return;
-      try { foreach (var (cc, sel) in Items(d)) cc.DrawCloud(e.Display, sel ? d.PreviewColourSelected : d.PreviewColour); } catch { }
+      try { foreach (var (cc, sel, mode) in Items(d)) cc.DrawCloud(e.Display, sel ? d.PreviewColourSelected : d.PreviewColour, mode); } catch { }
     }
   }
 }

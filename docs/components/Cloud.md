@@ -10,6 +10,8 @@ Point cloud parameter for Megabat. Use it like the Grasshopper Point Cloud param
 2. Or internalise a cloud. It is then stored completely in the .gh file, which makes the file large.
 3. Connect it to any Megabat component, e.g. Downsample.
 
+Right click › *Display* sets how this cloud is previewed: as set in the PreviewGuard menu (default), thinned, or level of detail (octree, full detail when zooming in). The choice is stored in the .gh file.
+
 If the referenced object is a proxy made with `MegabatImport` or `MegabatProxy` (see README), the parameter loads the full cloud from its file instead of the thinned proxy.
 
 ## Why not the normal Point Cloud parameter?
@@ -18,6 +20,6 @@ If the referenced object is a proxy made with `MegabatImport` or `MegabatProxy` 
 |---|---|---|
 | Referencing from Rhino | copies the cloud | uses the Rhino object directly |
 | Passing to the next parameter | copies the cloud | passes the same cloud |
-| Preview | draws every point | draws a cached, thinned copy (PreviewGuard limit) |
+| Preview | draws every point | draws a cached, thinned copy or an octree with level of detail (PreviewGuard limit) |
 
 Megabat components never modify an input cloud; they always create new clouds for their outputs. This is why passing without copying is safe.
