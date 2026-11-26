@@ -11,12 +11,11 @@ using Rhino.Input.Custom;
 using Megabat.Core;
 
 [assembly: System.Runtime.InteropServices.Guid("8d2c4b1e-5f7a-4c39-9e61-3b0a7d4f2c90")]
-[assembly: Rhino.PlugIns.PlugInDescription(Rhino.PlugIns.DescriptionType.Organization, "IfAG, University of Stuttgart")]
 [assembly: Rhino.PlugIns.PlugInDescription(Rhino.PlugIns.DescriptionType.WebSite, "https://github.com/barisWenzel/megabat")]
 
 namespace Megabat.RhinoPlugin
 {
-  // Megabat for Rhino: large point clouds as light proxies.
+  // Megabat for Rhino: large point clouds and meshes as light proxies.
   // The document holds a thinned cloud; the full cloud lives in a file next to the .3dm.
   // Megabat in Grasshopper recognises the proxy and computes with the full file.
   public class MegabatRhino : Rhino.PlugIns.PlugIn
@@ -31,6 +30,16 @@ namespace Megabat.RhinoPlugin
       get => Settings.GetInteger("ProxyCount", DefaultProxy);
       set => Settings.SetInteger("ProxyCount", value);
     }
+
+    internal const int DefaultProxyFaces = 200000;
+    internal int ProxyFaces
+    {
+      get => Settings.GetInteger("ProxyFaces", DefaultProxyFaces);
+      set => Settings.SetInteger("ProxyFaces", value);
+    }
+
+    // Mesh proxy: clustered mesh in the document, full mesh in the file
+    internal static Mesh MeshProxy(Mesh full, int faces) => MeshCloudCore.Cluster(full, faces, out _);
 
     internal static Guid AddProxy(RhinoDoc doc, PointCloud full, string file, string name, int count, ObjectAttributes att = null)
     {
@@ -66,14 +75,16 @@ namespace Megabat.RhinoPlugin
     {
       var fd = new Rhino.UI.OpenFileDialog
       {
-        Title = "Megabat: import point cloud as proxy",
-        Filter = "Point clouds (*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv)|*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv",
+        Title = "Megabat: import point cloud or mesh as proxy",
+        Filter = "Point clouds and meshes (*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv;*.obj;*.stl;*.fbx;*.off)|*.e57;*.ply;*.3dm;*.xyz;*.pts;*.txt;*.csv;*.obj;*.stl;*.fbx;*.off",
         MultiSelect = true
       };
       if (!fd.ShowOpenDialog()) return Result.Cancel;
-      int count = MegabatRhino.Instance.ProxyCount;
-      if (!MegabatRhino.AskCount("Points shown in Rhino", ref count)) return Result.Cancel;
-      MegabatRhino.Instance.ProxyCount = count;
+      bool anyMesh = fd.FileNames.Any(MeshFile.IsMesh), anyCloud = fd.FileNames.Any(f => !MeshFile.IsMesh(f));
+      int count = MegabatRhino.Instance.ProxyCount, faces = MegabatRhino.Instance.ProxyFaces;
+      if (anyCloud && !MegabatRhino.AskCount("Points shown in Rhino", ref count)) return Result.Cancel;
+      if (anyMesh && !MegabatRhino.AskCount("Faces shown in Rhino (approx.)", ref faces)) return Result.Cancel;
+      MegabatRhino.Instance.ProxyCount = count; MegabatRhino.Instance.ProxyFaces = faces;
 
       int done = 0;
       foreach (var file in fd.FileNames)
@@ -81,6 +92,19 @@ namespace Megabat.RhinoPlugin
         try
         {
           RhinoApp.SetCommandPrompt("Reading " + Path.GetFileName(file) + " ...");
+          if (MeshFile.IsMesh(file))
+          {
+            var swm = System.Diagnostics.Stopwatch.StartNew();
+            var fm = MeshFile.Load(file, doc.ModelUnitSystem);
+            var pm = MegabatRhino.MeshProxy(fm, faces);
+            var att = doc.CreateDefaultAttributes();
+            att.Name = Path.GetFileNameWithoutExtension(file);
+            CloudFile.MarkProxy(att, file, doc.Path, fm.Faces.Count);
+            doc.Objects.AddMesh(pm, att);
+            RhinoApp.WriteLine(string.Format("Megabat: {0} with {1:N0} faces, {2:N0} shown ({3:0.0} s)", Path.GetFileName(file), fm.Faces.Count, pm.Faces.Count, swm.Elapsed.TotalSeconds));
+            done++;
+            continue;
+          }
           var sw = System.Diagnostics.Stopwatch.StartNew();
           var full = CloudFile.Load(file, doc.ModelUnitSystem);
           MegabatRhino.AddProxy(doc, full, file, Path.GetFileNameWithoutExtension(file), count);
@@ -108,14 +132,16 @@ namespace Megabat.RhinoPlugin
         return Result.Failure;
       }
       var go = new GetObject();
-      go.SetCommandPrompt("Select point clouds");
-      go.GeometryFilter = ObjectType.PointSet;
+      go.SetCommandPrompt("Select point clouds or meshes");
+      go.GeometryFilter = ObjectType.PointSet | ObjectType.Mesh;
       go.SubObjectSelect = false;
       go.GetMultiple(1, 0);
       if (go.CommandResult() != Result.Success) return go.CommandResult();
-      int count = MegabatRhino.Instance.ProxyCount;
-      if (!MegabatRhino.AskCount("Points shown in Rhino", ref count)) return Result.Cancel;
-      MegabatRhino.Instance.ProxyCount = count;
+      bool anyMesh = go.Objects().Any(o => o.Object()?.Geometry is Mesh), anyCloud = go.Objects().Any(o => o.Object()?.Geometry is PointCloud);
+      int count = MegabatRhino.Instance.ProxyCount, faces = MegabatRhino.Instance.ProxyFaces;
+      if (anyCloud && !MegabatRhino.AskCount("Points shown in Rhino", ref count)) return Result.Cancel;
+      if (anyMesh && !MegabatRhino.AskCount("Faces shown in Rhino (approx.)", ref faces)) return Result.Cancel;
+      MegabatRhino.Instance.ProxyCount = count; MegabatRhino.Instance.ProxyFaces = faces;
 
       var dir = Path.Combine(Path.GetDirectoryName(doc.Path), Path.GetFileNameWithoutExtension(doc.Path) + "_clouds");
       Directory.CreateDirectory(dir);
@@ -123,8 +149,30 @@ namespace Megabat.RhinoPlugin
       foreach (var r in go.Objects())
       {
         var obj = r.Object();
+        if (obj != null && CloudFile.IsProxy(obj.Attributes)) { RhinoApp.WriteLine("Megabat: {0} is already a proxy", Label(obj)); continue; }
+        if (obj?.Geometry is Mesh fm)
+        {
+          if (fm.Faces.Count <= faces) { RhinoApp.WriteLine("Megabat: {0} has only {1:N0} faces, left as it is", Label(obj), fm.Faces.Count); continue; }
+          var mf = Path.Combine(dir, Safe(Label(obj)) + ".3dm");
+          int km = 2;
+          while (File.Exists(mf)) mf = Path.Combine(dir, Safe(Label(obj)) + "_" + km++ + ".3dm");
+          try
+          {
+            RhinoApp.SetCommandPrompt("Writing " + Path.GetFileName(mf) + " ...");
+            MeshFile.Write3dm(fm, mf, doc.ModelUnitSystem);
+            var pm = MegabatRhino.MeshProxy(fm, faces);
+            var att = obj.Attributes.Duplicate();
+            if (string.IsNullOrEmpty(att.Name)) att.Name = Label(obj);
+            CloudFile.MarkProxy(att, mf, doc.Path, fm.Faces.Count);
+            doc.Objects.Replace(obj.Id, pm);
+            doc.Objects.ModifyAttributes(obj.Id, att, true);
+            RhinoApp.WriteLine(string.Format("Megabat: {0} → {1:N0} of {2:N0} faces shown, full mesh in {3}", Label(obj), pm.Faces.Count, fm.Faces.Count, mf));
+            done++;
+          }
+          catch (Exception e) { RhinoApp.WriteLine("Megabat: " + Label(obj) + ": " + e.Message); }
+          continue;
+        }
         if (!(obj?.Geometry is PointCloud full)) continue;
-        if (CloudFile.IsProxy(obj.Attributes)) { RhinoApp.WriteLine("Megabat: {0} is already a proxy", Label(obj)); continue; }
         if (full.Count <= count) { RhinoApp.WriteLine("Megabat: {0} has only {1:N0} points, left as it is", Label(obj), full.Count); continue; }
         var file = Path.Combine(dir, Safe(Label(obj)) + ".ply");
         int k = 2;
@@ -160,8 +208,8 @@ namespace Megabat.RhinoPlugin
     protected override Result RunCommand(RhinoDoc doc, RunMode mode)
     {
       var go = new GetObject();
-      go.SetCommandPrompt("Select proxy clouds");
-      go.GeometryFilter = ObjectType.PointSet;
+      go.SetCommandPrompt("Select proxy clouds or meshes");
+      go.GeometryFilter = ObjectType.PointSet | ObjectType.Mesh;
       go.SubObjectSelect = false;
       go.GetMultiple(1, 0);
       if (go.CommandResult() != Result.Success) return go.CommandResult();
@@ -174,6 +222,17 @@ namespace Megabat.RhinoPlugin
         if (file == null) { RhinoApp.WriteLine("Megabat: file of {0} not found ({1})", obj.Attributes.Name, obj.Attributes.GetUserString(CloudFile.KeySource)); continue; }
         try
         {
+          if (obj.Geometry is Mesh)
+          {
+            var fm = MeshFile.Load(file, doc.ModelUnitSystem).DuplicateMesh();
+            var am = obj.Attributes.Duplicate();
+            CloudFile.Unmark(am);
+            doc.Objects.Replace(obj.Id, fm);
+            doc.Objects.ModifyAttributes(obj.Id, am, true);
+            RhinoApp.WriteLine("Megabat: {0} restored with {1:N0} faces; the file {2} is kept", obj.Attributes.Name, fm.Faces.Count, file);
+            done++;
+            continue;
+          }
           var full = CloudFile.Load(file, doc.ModelUnitSystem);
           var att = obj.Attributes.Duplicate();
           CloudFile.Unmark(att);

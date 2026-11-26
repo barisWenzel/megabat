@@ -1,10 +1,10 @@
+<p align="center"><img src="docs/images/logo.jpg" width="320" alt="Megabat logo"></p>
+
 # Megabat
 
 Point cloud tools for scan-to-BIM in Grasshopper (Rhino 8).
 
 Megabat makes large point clouds workable in Grasshopper and leads from the raw scan to building elements: thin, crop, detect planes, snap rooms, walls and openings from rough sketches, and cut architectural sections.
-
-Developed at the Institute of Architectural History (IfAG), University of Stuttgart, for teaching and research on digital reconstruction.
 
 ## Installation
 
@@ -40,6 +40,11 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | | [MergeClouds](docs/components/MergeClouds.md) | Merge several clouds into one |
 | | [ExportCloud](docs/components/ExportCloud.md) | Write clouds to PLY or XYZ files instead of baking |
 | | [ViewPoints](docs/components/ViewPoints.md) | Standpoints that see most of the surfaces (cameras for Detect, scanner positions) |
+| | [MeshToCloud](docs/components/MeshToCloud.md) | Mesh vertices as a cloud, so the cloud tools work on meshes |
+| | [CloudToMesh](docs/components/CloudToMesh.md) | Faces of the original mesh whose vertices are still in a cloud |
+| | [MeshCrop](docs/components/MeshCrop.md) | Cut a large mesh at a Brep or planes, much faster than Mesh Split |
+| | [ReduceMesh](docs/components/ReduceMesh.md) | Fast mesh reduction by vertex clustering |
+| | [MeshClosest](docs/components/MeshClosest.md) | Closest points on a mesh for many points or a cloud, in parallel |
 | 2 Segments | [Segmentize](docs/components/Segmentize.md) | Find planes (RANSAC), output as segments |
 | | [Classify](docs/components/Classify.md) | Horizontal / vertical / inclined, snap to Z and main direction |
 | | [Deconstruct Segment](docs/components/DeconstructSegment.md) | Plane, points, type of a segment |
@@ -47,6 +52,8 @@ The geometric elements are semi-automatic on purpose: you sketch roughly, Megaba
 | | [SnapOpening](docs/components/SnapOpening.md) | Snap a sketched window or door to the opening, reveal depth |
 | | [FitColumn](docs/components/FitColumn.md) | Round column by circle fit |
 | | [SegmentRect](docs/components/SegmentRect.md) | One rectangular surface per segment, edges trimmed to the neighbours, optional outline |
+| | [Openings](docs/components/Openings.md) (experimental) | Windows and doors from the holes in the walls |
+| | [Detect](docs/components/Detect.md) (experimental) | Objects named in a text prompt (Grounding DINO, needs Python) |
 | 4 Section | [Section](docs/components/Section.md) | Architectural section with view beyond |
 | 5 Display | [Show](docs/components/Show.md) | Preview with line weight, point size and colour |
 | 6 Photo | [ImportColmap](docs/components/ImportColmap.md) | Oriented photos from a COLMAP model, laid out as image board |
@@ -64,7 +71,7 @@ The folder [`examples`](examples) holds one Grasshopper file per workflow (cloud
 
 ## Experimental scripts
 
-The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin, at the moment open-vocabulary object detection with Grounding DINO. See [scripts/README.md](scripts/README.md).
+The folder [`scripts`](scripts) holds C# script components that are being tested before they become part of the plugin, and the Python setup for [Detect](docs/components/Detect.md). See [scripts/README.md](scripts/README.md).
 
 ## Why Megabat: the preview bottleneck
 
@@ -104,9 +111,9 @@ Even with Megabat, a scan with tens of millions of points slows Rhino itself dow
 
 | Command | What it does |
 |---|---|
-| `MegabatImport` | Reads a file (`.e57`, `.ply`, `.3dm`, `.xyz`, `.pts`, `.txt`, `.csv`) and adds a proxy with a chosen number of points (default 500 000). The file stays where it is. |
-| `MegabatProxy` | Turns selected point clouds into proxies. The full cloud is written as binary PLY (double precision) into a folder `<file>_clouds` next to the .3dm. |
-| `MegabatFull` | Brings the full cloud back into the document, e.g. to snap to every point or to export. |
+| `MegabatImport` | Reads a file (`.e57`, `.ply`, `.3dm`, `.xyz`, `.pts`, `.txt`, `.csv`) and adds a proxy with a chosen number of points (default 500 000). The file stays where it is. Meshes (`.obj`, `.stl`, `.fbx`, `.off`, `.ply` with faces) get a reduced mesh as proxy (default 200 000 faces). |
+| `MegabatProxy` | Turns selected point clouds into proxies. The full cloud is written as binary PLY (double precision) into a folder `<file>_clouds` next to the .3dm. Selected meshes are written there as .3dm. |
+| `MegabatFull` | Brings the full cloud or mesh back into the document, e.g. to snap to every point or to export. |
 
 E57 files are read with the E57 importer built into Rhino 8 (all scans merged, scan poses applied, scaled from metres into the document units). PLY and text files carry no units and are taken as they are.
 

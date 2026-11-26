@@ -11,7 +11,7 @@ Open a Rhino file in **metres** for 01 to 04 and 06 (the point cloud is in metre
 | `03_Snap.gh` | SnapPolygon (room from a rough sketch), SnapOpening (door with reveal depth) | `data/S170_1cm.ply` |
 | `04_Section.gh` | Section as plan and as vertical section, view beyond with Show | `data/S170_1cm.ply` |
 | `05_Photo.gh` + `05_Photo.3dm` | ImportColmap, Measure, Intersect, Georef, Ortho | South Building (download, see below) |
-| `06_Detect.gh` | ViewPoints and Detect (experimental script): objects from a text prompt with Grounding DINO | `data/S170_1cm.ply`, Python setup in [scripts/README.md](../scripts/README.md) |
+| `06_Detect.gh` | ViewPoints and Detect (experimental): objects from a text prompt with Grounding DINO | `data/S170_1cm.ply`, Python setup in [scripts/README.md](../scripts/README.md) |
 
 ## 01 Cloud
 
@@ -51,13 +51,13 @@ Data: [South Building](https://demuc.de/colmap/datasets/) from the COLMAP datase
 1. Download `south-building.zip` and unpack it.
 2. In COLMAP: File › Import model › `south-building\sparse`, then Reconstruction › Dense reconstruction › Select a new folder (e.g. `south-building\dense`) › **Undistortion**.
 3. File › Import model › `dense\sparse`, then File › Export model as text into the same folder.
-4. Open `05_Photo.3dm` in Rhino, then `05_Photo.gh`, and set `dir` to the `dense\sparse` folder.
+4. Open `05_Photo.gh` and set `dir` to the `dense\sparse` folder. Opening takes a while, because all photos are read and shown as textures.
 
-The .3dm holds the measured points P003 to P010 on the layer `Megabat::Measure`; P007 to P010 are the corners of a window. Intersect turns them into 3D points, Georef scales them with the window width (1.2 m) and lays the window flat into XY, Ortho rectifies it (top view). With `Add` you measure new points.
+The measured points P003 to P010 are internalised in the .gh file, so it works without the .3dm; P007 to P010 are the corners of a window. Intersect turns them into 3D points, Georef scales them with the window width (1.2 m) and lays the window flat into XY, Ortho rectifies it (top view). To measure your own points, open `05_Photo.3dm` (millimetres, holds the same points on the layer `Megabat::Measure`), connect Measure › P to Intersect › P and press `Add`.
 
 ## 06 Detect
 
-Needs Python with PyTorch and an NVIDIA GPU; setup in [scripts/README.md](../scripts/README.md). ViewPoints chooses camera standpoints that together see most of the room; Detect renders 8 views from each. Set the prompt (classes separated by a dot and a space), then switch `run` to true. One run takes about a minute.
+Needs Python with PyTorch and an NVIDIA GPU; setup in [scripts/README.md](../scripts/README.md). ViewPoints chooses camera standpoints that together see most of the room; Detect renders 8 views from each. Set the prompt (classes separated by a dot and a space), then switch `run` to true. Opening the file takes a while, because the cloud is read and rendered; one run takes about another minute.
 
 ## Data and licence
 

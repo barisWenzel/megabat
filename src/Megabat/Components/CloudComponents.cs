@@ -276,6 +276,83 @@ namespace Megabat.Components
     }
   }
 
+  public class MeshToCloudComponent : MegabatComponent
+  {
+    public MeshToCloudComponent() : base("MeshToCloud", "M2C",
+      "Mesh vertices as a cloud (colour and normal per vertex), so that all cloud tools also work on meshes. CloudToMesh takes the faces back from the original mesh.", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000008");
+    public override GH_Exposure Exposure => GH_Exposure.secondary;
+    protected override string IconText => "MC";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      p.AddMeshParameter("M", "M", "Mesh, e.g. from photogrammetry; a mesh proxy from MegabatImport/MegabatProxy is read in full from its file", GH_ParamAccess.item);
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      AddCloud(p, "Cloud", "One point per vertex; vertex colours if present, normals always");
+      p.AddTextParameter("Info", "Info", "Vertex and face count, run time", GH_ParamAccess.item);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var m = GetMesh(DA, 0);
+      if (m == null) return;
+      var pc = MeshCloudCore.ToCloud(m);
+      DA.SetData(0, new CloudGoo(pc));
+      DA.SetData(1, string.Format("{0:N0} vertices, {1:N0} faces, {2}", pc.Count, m.Faces.Count, Ms));
+    }
+  }
+
+  public class CloudToMeshComponent : MegabatComponent
+  {
+    public CloudToMeshComponent() : base("CloudToMesh", "C2M",
+      "Part of the original mesh whose vertices are still in a cloud from MeshToCloud, e.g. after CropBrep or a section. Faster than splitting the mesh. Points must keep their exact position (no voxel downsampling).", Tab.Cloud) { }
+    public override Guid ComponentGuid => new Guid("a3c9f0d2-11e4-4b6a-8a01-6d2f5e000009");
+    public override GH_Exposure Exposure => GH_Exposure.secondary;
+    protected override string IconText => "CM";
+    protected override Color IconColor => Icons.Cloud;
+
+    protected override void RegisterInputParams(GH_InputParamManager p)
+    {
+      p.AddMeshParameter("M", "M", "Original mesh (the one given to MeshToCloud)", GH_ParamAccess.item);
+      AddCloud(p, "C", "Cloud with the vertices to keep", GH_ParamAccess.list);
+      p.AddBooleanParameter("all", "all", "Without B: true = keep a face only if all its vertices are in the cloud; false = one vertex is enough", GH_ParamAccess.item, true);
+      p.AddBrepParameter("B", "B", "Optional: closed Breps the clouds were cropped with (same order as C, or one for all); the border faces are then cut exactly at the Brep, only the narrow border strip is split", GH_ParamAccess.list);
+      p[3].Optional = true;
+    }
+    protected override void RegisterOutputParams(GH_OutputParamManager p)
+    {
+      p.AddMeshParameter("Mesh", "Mesh", "One mesh per cloud; colours, normals and texture coordinates of the original are kept", GH_ParamAccess.list);
+      p.AddTextParameter("Info", "Info", "Vertices found and faces kept per cloud, run time", GH_ParamAccess.list);
+    }
+    protected override void SolveInstance(IGH_DataAccess DA)
+    {
+      var C = new List<CloudGoo>(); bool all = true; var B = new List<Brep>();
+      var m = GetMesh(DA, 0);
+      if (m == null) return;
+      if (!DA.GetDataList(1, C)) return;
+      DA.GetData(2, ref all);
+      DA.GetDataList(3, B);
+      double tol = Rhino.RhinoDoc.ActiveDoc?.ModelAbsoluteTolerance ?? 0.001;
+      var outM = new List<Mesh>(); var info = new List<string>();
+      for (int ci = 0; ci < C.Count; ci++)
+      {
+        var cg = C[ci]; int kept;
+        var b = B.Count == 0 ? null : B[Math.Min(ci, B.Count - 1)];
+        if (b != null && !b.IsSolid) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Brep is not closed: faces removed without cutting"); b = null; }
+        var r = b != null ? MeshCloudCore.ExtractCut(m, cg?.Value, b, tol, out kept) : MeshCloudCore.Extract(m, cg?.Value, all, out kept);
+        outM.Add(r);
+        info.Add(r == null ? string.Format("{0:N0} vertices found, no face", kept)
+                           : string.Format("{0:N0} vertices found, {1:N0} of {2:N0} faces", kept, r.Faces.Count, m.Faces.Count));
+        if (cg?.Value != null && kept == 0) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "No vertex of the mesh found in a cloud: was it made with MeshToCloud from this mesh, without voxel downsampling?");
+      }
+      if (info.Count > 0) info[info.Count - 1] += ", " + Ms;
+      DA.SetDataList(0, outM);
+      DA.SetDataList(1, info);
+    }
+  }
+
   public class ViewPointsComponent : MegabatComponent
   {
     public ViewPointsComponent() : base("ViewPoints", "Views",

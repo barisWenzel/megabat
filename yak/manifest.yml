@@ -1,0 +1,23 @@
+name: megabat
+version: 0.1.0
+authors:
+- Baris Wenzel
+description: >
+  Large point clouds and meshes in Rhino and Grasshopper. Clouds are drawn through a
+  level-of-detail octree or a thinned proxy while the tools compute on the full cloud.
+  Crop, downsample and slice clouds and meshes; segment planes (RANSAC), classify walls
+  and floors, fit columns, snap outlines, sections; oriented photos from COLMAP,
+  georeferencing and orthophotos. Some tools (object detection, openings) are experimental.
+url: https://github.com/barisWenzel/megabat
+icon: icon.png
+keywords:
+- point cloud
+- pointcloud
+- scan
+- lidar
+- mesh
+- e57
+- ply
+- scan to bim
+- photogrammetry
+- colmap

@@ -41,6 +41,26 @@ namespace Megabat.Components
       return System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(gh), path));
     }
 
+    // Mesh input; a referenced mesh proxy (MegabatImport/MegabatProxy) is replaced by the full mesh from its file
+    protected Rhino.Geometry.Mesh GetMesh(IGH_DataAccess DA, int i)
+    {
+      Grasshopper.Kernel.Types.GH_Mesh g = null;
+      if (!DA.GetData(i, ref g) || g?.Value == null) return null;
+      if (g.IsReferencedGeometry)
+      {
+        var doc = Rhino.RhinoDoc.ActiveDoc;
+        var obj = doc?.Objects.FindId(g.ReferenceID);
+        var src = CloudFile.SourceOf(obj?.Attributes, doc?.Path);
+        if (src != null)
+        {
+          try { return MeshFile.Load(src, doc.ModelUnitSystem); }
+          catch (System.Exception e) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Full mesh not read, proxy used: " + e.Message); }
+        }
+        else if (CloudFile.IsProxy(obj?.Attributes)) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "File of the mesh proxy not found, proxy used");
+      }
+      return g.Value;
+    }
+
     protected string Ms => Watch == null ? "" : Watch.Elapsed.TotalMilliseconds.ToString("0") + " ms";
 
     // Parameter helpers

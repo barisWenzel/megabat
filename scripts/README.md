@@ -10,6 +10,8 @@ All scripts are experimental: inputs, outputs and results may change.
 
 Open-vocabulary object detection in a point cloud with Grounding DINO: the cloud is rendered into views, Grounding DINO finds the objects named in a text prompt, and the 2D boxes are mapped back to the points.
 
+Detect is now a plugin component, see [Detect](../docs/components/Detect.md). The component needs the same Python setup and `detect.py` described below. `Detect.cs` is kept here for reference.
+
 **Setup** (once, needs an NVIDIA GPU):
 
 1. Install Python 3.12 or newer.
@@ -44,4 +46,4 @@ Known limits: grey (unscanned) areas are sometimes detected as doors; boxes of l
 
 ## Moved into the plugin
 
-The earlier scripts RectOutline, ImportColmap, Measure and Intersect are now plugin components: the outline is an option of [SegmentRect](../docs/components/SegmentRect.md), the photo tools are in the group 6 Photo ([ImportColmap](../docs/components/ImportColmap.md), [Measure](../docs/components/Measure.md), [Intersect](../docs/components/Intersect.md), [Georef](../docs/components/Georef.md), [Ortho](../docs/components/Ortho.md)). The script files are kept here for reference.
+The earlier scripts RectOutline, ImportColmap, Measure, Intersect and Detect are now plugin components ([Detect](../docs/components/Detect.md) in the group 3 Elements): the outline is an option of [SegmentRect](../docs/components/SegmentRect.md), the photo tools are in the group 6 Photo ([ImportColmap](../docs/components/ImportColmap.md), [Measure](../docs/components/Measure.md), [Intersect](../docs/components/Intersect.md), [Georef](../docs/components/Georef.md), [Ortho](../docs/components/Ortho.md)). The script files are kept here for reference.

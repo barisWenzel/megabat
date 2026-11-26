@@ -3,7 +3,7 @@
 **Group:** 1 Cloud  
 **Nickname:** Views
 
-Standpoints that see as much of the surfaces as possible: camera positions for [Detect](../../scripts/README.md) or scanner positions for planning a scan.
+Standpoints that see as much of the surfaces as possible: camera positions for [Detect](Detect.md) or scanner positions for planning a scan.
 
 ## Inputs
 
